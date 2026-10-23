@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<title>MA VIE</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+html,body{height:100%;background:#000;color:#fff;font-family:system-ui,Arial,sans-serif}
+button,input,textarea{font:inherit}
+.logo{font-weight:900;letter-spacing:4px;font-size:28px}
+.screen{display:none;height:100%;width:100%;max-width:480px;margin:0 auto;position:relative}
+.screen.on{display:flex;flex-direction:column}
+.center{justify-content:center;padding:24px;gap:12px}
+input,textarea{background:#111;border:1px solid #333;color:#fff;border-radius:10px;padding:14px;width:100%}
+.btn{background:#fff;color:#000;border:0;border-radius:10px;padding:14px;font-weight:700;width:100%}
+.btn.alt{background:#111;color:#fff;border:1px solid #333}
+.link{background:none;border:0;color:#aaa;text-decoration:underline;padding:8px}
+.err{color:#ff6b6b;font-size:14px;min-height:18px}
+#feed{flex:1;overflow-y:scroll;scroll-snap-type:y mandatory}
+.vid{height:calc(100% );scroll-snap-align:start;position:relative;background:#000;display:flex;align-items:center;justify-content:center}
+.vid video{width:100%;height:100%;object-fit:contain;background:#000}
+.info{position:absolute;left:12px;bottom:90px;right:80px;text-shadow:0 1px 4px #000}
+.side{position:absolute;right:10px;bottom:90px;display:flex;flex-direction:column;gap:18px;align-items:center}
+.side button{background:rgba(0,0,0,.5);border:1px solid #444;color:#fff;border-radius:50%;width:52px;height:52px;font-size:20px}
+.side small{display:block;font-size:12px;margin-top:-14px}
+nav{display:flex;border-top:1px solid #222;background:#000;height:60px}
+nav button{flex:1;background:none;border:0;color:#aaa;font-size:15px}
+nav button.cur{color:#fff;font-weight:700}
+.page{flex:1;overflow:auto;padding:20px;display:flex;flex-direction:column;gap:12px}
+.avatar{width:90px;height:90px;border-radius:50%;background:#222;border:2px solid #fff;display:flex;align-items:center;justify-content:center;font-size:36px;font-weight:700;overflow:hidden;margin:0 auto}
+.avatar img{width:100%;height:100%;object-fit:cover}
+.modal{position:fixed;inset:0;background:rgba(0,0,0,.85);display:none;align-items:flex-end;justify-content:center;z-index:9}
+.modal.on{display:flex}
+.sheet{background:#111;width:100%;max-width:480px;max-height:75%;border-radius:16px 16px 0 0;padding:16px;display:flex;flex-direction:column;gap:10px}
+.cmts{overflow:auto;flex:1;display:flex;flex-direction:column;gap:8px}
+.cmt b{color:#aaa}
+.row{display:flex;gap:8px}
+.card{background:#111;border:1px solid #222;border-radius:10px;padding:10px;display:flex;justify-content:space-between;align-items:center;gap:8px}
+.card .btn{width:auto;padding:8px 12px}
+</style>
+</head>
+<body>
+
+<!-- CONNEXION / INSCRIPTION -->
+<div id="auth" class="screen center">
+  <div class="logo" style="text-align:center;font-size:40px">MA VIE</div>
+  <p style="text-align:center;color:#aaa;margin-bottom:10px">Partage ta vie en vidéo</p>
+  <input id="nom" placeholder="Nom d'utilisateur (inscription)">
+  <input id="email" type="email" placeholder="E-mail">
+  <input id="mdp" type="password" placeholder="Mot de passe (6 caractères minimum)">
+  <div class="err" id="autherr"></div>
+  <button class="btn" id="btnLogin">Se connecter</button>
+  <button class="btn alt" id="btnSignup">Créer mon compte</button>
+</div>
+
+<!-- APPLICATION -->
+<div id="app" class="screen">
+  <div id="vFeed" class="screen on" style="max-width:none;flex:1;min-height:0">
+    <div id="feed"></div>
+  </div>
+
+  <div id="vPub" class="page" style="display:none">
+    <div class="logo">Publier</div>
+    <input id="pUrl" placeholder="Lien de la vidéo (.mp4)">
+    <textarea id="pDesc" rows="3" placeholder="Description et #hashtags"></textarea>
+    <input id="pMusic" placeholder="Musique (facultatif)">
+    <div class="err" id="puberr"></div>
+    <button class="btn" id="btnPub">Publier</button>
+  </div>
+
+  <div id="vProf" class="page" style="display:none">
+    <div class="avatar" id="pAvatar"></div>
+    <div id="pName" style="text-align:center;font-size:20px;font-weight:700"></div>
+    <div id="pStats" style="text-align:center;color:#aaa"></div>
+    <input id="pPhoto" placeholder="Lien de ta photo de profil">
+    <button class="btn alt" id="btnPhoto">Changer ma photo</button>
+    <div style="font-weight:700;margin-top:10px">Découvrir des gens</div>
+    <div id="people" style="display:flex;flex-direction:column;gap:8px"></div>
+    <button class="btn alt" id="btnLogout" style="margin-top:16px">Se déconnecter</button>
+  </div>
+
+  <nav>
+    <button data-v="vFeed" class="cur">Accueil</button>
+    <button data-v="vPub">Publier</button>
+    <button data-v="vProf">Profil</button>
+  </nav>
+</div>
+
+<!-- COMMENTAIRES -->
+<div id="cm" class="modal"><div class="sheet">
+  <div style="display:flex;justify-content:space-between"><b>Commentaires</b><button class="link" id="cmClose">Fermer</button></div>
+  <div class="cmts" id="cmList"></div>
+  <div class="row"><input id="cmText" placeholder="Ajouter un commentaire"><button class="btn" id="cmSend" style="width:auto">OK</button></div>
+</div></div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged, updateProfile } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+import { getFirestore, doc, setDoc, getDoc, getDocs, addDoc, collection, query, orderBy, limit, updateDoc, arrayUnion, arrayRemove, deleteDoc, serverTimestamp, onSnapshot } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+// ====== COLLE ICI TON firebaseConfig (projet ma-vie-2b252) ======
+const firebaseConfig = {
+  apiKey: "AIzaSyDt_UcyL9pXwvfE-5NpOozMykCJh7zvvrs",
+  authDomain: "ma-vie-2b252.firebaseapp.com",
+  projectId: "ma-vie-2b252",
+  storageBucket: "ma-vie-2b252.firebasestorage.app",
+  messagingSenderId: "235933753646",
+  appId: "1:235933753646:web:91df8965e68affbf3f9abf"
+};
+// ================================================================
+
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db = getFirestore(app);
+const $ = id => document.getElementById(id);
+let me = null, myData = null, following = new Set(), cmVideo = null, unsubCm = null;
+
+const msg = e => ({
+  "auth/email-already-in-use":"Cet e-mail est déjà utilisé.",
+  "auth/invalid-email":"E-mail invalide.",
+  "auth/weak-password":"Mot de passe trop court (6 minimum).",
+  "auth/invalid-credential":"E-mail ou mot de passe incorrect.",
+  "auth/network-request-failed":"Pas de connexion internet."
+}[e.code] || ("Erreur : " + (e.code || e.message)));
+
+$("btnSignup").onclick = async () => {
+  $("autherr").textContent = "";
+  const nom = $("nom").value.trim();
+  if (nom.length < 3) { $("autherr").textContent = "Choisis un nom d'utilisateur (3 lettres minimum)."; return; }
+  try {
+    const c = await createUserWithEmailAndPassword(auth, $("email").value.trim(), $("mdp").value);
+    await updateProfile(c.user, { displayName: nom });
+    await setDoc(doc(db, "users", c.user.uid), { name: nom, photo: "", followers: 0, createdAt: serverTimestamp() });
+  } catch (e) { $("autherr").textContent = msg(e); }
+};
+$("btnLogin").onclick = async () => {
+  $("autherr").textContent = "";
+  try { await signInWithEmailAndPassword(auth, $("email").value.trim(), $("mdp").value); }
+  catch (e) { $("autherr").textContent = msg(e); }
+};
+$("btnLogout").onclick = () => signOut(auth);
+
+onAuthStateChanged(auth, async u => {
+  me = u;
+  if (!u) { $("app").classList.remove("on"); $("auth").classList.add("on"); return; }
+  $("auth").classList.remove("on"); $("app").classList.add("on");
+  const s = await getDoc(doc(db, "users", u.uid));
+  myData = s.exists() ? s.data() : { name: u.displayName || "Moi", photo: "", followers: 0 };
+  const f = await getDocs(collection(db, "users", u.uid, "following"));
+  following = new Set(f.docs.map(d => d.id));
+  show("vFeed"); loadFeed(); renderProfile();
+});
+
+document.querySelectorAll("nav button").forEach(b => b.onclick = () => show(b.dataset.v));
+function show(v) {
+  ["vFeed","vPub","vProf"].forEach(id => $(id).style.display = id === v ? (id === "vFeed" ? "flex" : "flex") : "none");
+  document.querySelectorAll("nav button").forEach(b => b.classList.toggle("cur", b.dataset.v === v));
+  if (v === "vProf") { renderProfile(); loadPeople(); }
+}
+
+async function loadFeed() {
+  const feed = $("feed"); feed.innerHTML = "";
+  const snap = await getDocs(query(collection(db, "videos"), orderBy("createdAt", "desc"), limit(30)));
+  if (snap.empty) { feed.innerHTML = '<div class="vid"><p style="color:#aaa;padding:30px;text-align:center">Aucune vidéo pour le moment.<br>Sois le premier à publier !</p></div>'; return; }
+  snap.forEach(d => feed.appendChild(videoEl(d.id, d.data())));
+  const io = new IntersectionObserver(es => es.forEach(e => { const v = e.target.querySelector("video"); if (!v) return; e.isIntersecting ? v.play().catch(()=>{}) : v.pause(); }), { threshold: .7 });
+  feed.querySelectorAll(".vid").forEach(el => io.observe(el));
+}
+
+function videoEl(id, v) {
+  const el = document.createElement("div"); el.className = "vid";
+  const likes = v.likes || [];
+  const liked = likes.includes(me.uid);
+  const isFollowing = following.has(v.uid);
+  el.innerHTML = `<video src="${esc(v.url)}" loop playsinline muted controls></video>
+  <div class="info"><b>@${esc(v.name)}</b><div>${esc(v.desc || "")}</div><div style="color:#ccc;font-size:13px">${v.music ? "♪ " + esc(v.music) : ""}</div></div>
+  <div class="side">
+    <div><button class="lk">${liked ? "♥" : "♡"}</button><small>${likes.length}</small></div>
+    <div><button class="cm">💬</button></div>
+    <div><button class="sh">↗</button></div>
+    ${v.uid !== me.uid ? `<div><button class="fo" style="font-size:12px">${isFollowing ? "Suivi" : "Suivre"}</button></div>` : ""}
+  </div>`;
+  el.querySelector(".lk").onclick = async e => {
+    const ref = doc(db, "videos", id); const now = e.target.textContent === "♥";
+    await updateDoc(ref, { likes: now ? arrayRemove(me.uid) : arrayUnion(me.uid) });
+    const n = likes.filter(x => x !== me.uid).length + (now ? 0 : 1);
+    e.target.textContent = now ? "♡" : "♥"; e.target.parentNode.querySelector("small").textContent = n;
+  };
+  el.querySelector(".cm").onclick = () => openComments(id);
+  el.querySelector(".sh").onclick = () => { const t = `Regarde cette vidéo sur MA VIE : ${v.url}`; navigator.share ? navigator.share({ text: t }).catch(()=>{}) : prompt("Copie ce texte :", t); };
+  const fo = el.querySelector(".fo");
+  if (fo) fo.onclick = () => toggleFollow(v.uid, fo);
+  return el;
+}
+
+async function toggleFollow(uid, btn) {
+  const ref = doc(db, "users", me.uid, "following", uid);
+  if (following.has(uid)) { await deleteDoc(ref); following.delete(uid); }
+  else { await setDoc(ref, { at: serverTimestamp() }); following.add(uid); }
+  if (btn) btn.textContent = following.has(uid) ? "Suivi" : "Suivre";
+  renderProfile();
+}
+
+function openComments(id) {
+  cmVideo = id; $("cm").classList.add("on");
+  if (unsubCm) unsubCm();
+  unsubCm = onSnapshot(query(collection(db, "videos", id, "comments"), orderBy("createdAt", "asc")), s => {
+    $("cmList").innerHTML = s.empty ? '<span style="color:#aaa">Aucun commentaire.</span>' : s.docs.map(d => `<div class="cmt"><b>@${esc(d.data().name)}</b> ${esc(d.data().text)}</div>`).join("");
+  });
+}
+$("cmClose").onclick = () => { $("cm").classList.remove("on"); if (unsubCm) unsubCm(); };
+$("cmSend").onclick = async () => {
+  const t = $("cmText").value.trim(); if (!t || !cmVideo) return;
+  await addDoc(collection(db, "videos", cmVideo, "comments"), { uid: me.uid, name: myData.name, text: t, createdAt: serverTimestamp() });
+  $("cmText").value = "";
+};
+
+$("btnPub").onclick = async () => {
+  $("puberr").textContent = "";
+  const url = $("pUrl").value.trim();
+  if (!/^https?:\/\//.test(url)) { $("puberr").textContent = "Colle un lien de vidéo qui commence par https://"; return; }
+  try {
+    await addDoc(collection(db, "videos"), { uid: me.uid, name: myData.name, url, desc: $("pDesc").value.trim(), music: $("pMusic").value.trim(), likes: [], createdAt: serverTimestamp() });
+    $("pUrl").value = $("pDesc").value = $("pMusic").value = "";
+    show("vFeed"); loadFeed();
+  } catch (e) { $("puberr").textContent = msg(e); }
+};
+
+function renderProfile() {
+  if (!me || !myData) return;
+  $("pName").textContent = "@" + myData.name;
+  $("pAvatar").innerHTML = myData.photo ? `<img src="${esc(myData.photo)}">` : esc(myData.name[0].toUpperCase());
+  $("pStats").textContent = `${following.size} abonnement(s)`;
+}
+$("btnPhoto").onclick = async () => {
+  const p = $("pPhoto").value.trim(); if (!p) return;
+  await updateDoc(doc(db, "users", me.uid), { photo: p }); myData.photo = p; renderProfile();
+};
+async function loadPeople() {
+  const s = await getDocs(query(collection(db, "users"), limit(20)));
+  const box = $("people"); box.innerHTML = "";
+  s.forEach(d => {
+    if (d.id === me.uid) return;
+    const c = document.createElement("div"); c.className = "card";
+    c.innerHTML = `<span>@${esc(d.data().name)}</span><button class="btn alt">${following.has(d.id) ? "Suivi" : "Suivre"}</button>`;
+    const b = c.querySelector("button"); b.onclick = () => toggleFollow(d.id, b);
+    box.appendChild(c);
+  });
+  if (!box.children.length) box.innerHTML = '<span style="color:#aaa">Personne d\'autre pour le moment.</span>';
+}
+function esc(s) { return String(s).replace(/[&<>"']/g, c => ({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;" }[c])); }
+</script>
+</body>
+</html>
