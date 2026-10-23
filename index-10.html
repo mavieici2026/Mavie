@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>MA VIE</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+html,body{height:100%;background:#000;color:#fff;font-family:system-ui,-apple-system,Arial,sans-serif}
+#err{position:fixed;top:0;left:0;right:0;z-index:99;background:#b00020;color:#fff;font-size:13px;padding:10px;display:none;white-space:pre-wrap;word-break:break-word}
+.logo{font-weight:800;letter-spacing:4px;font-size:28px}
+#loading{height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px}
+#loading small{color:#aaa}
+.hidden{display:none!important}
+/* Connexion */
+#auth{min-height:100%;display:flex;flex-direction:column;justify-content:center;gap:14px;padding:28px;max-width:420px;margin:0 auto}
+#auth .logo{text-align:center;font-size:36px;margin-bottom:10px}
+input,textarea{width:100%;padding:14px;border-radius:10px;border:1px solid #444;background:#111;color:#fff;font-size:16px}
+button{padding:14px;border-radius:10px;border:0;background:#fff;color:#000;font-weight:700;font-size:16px;cursor:pointer}
+button.sec{background:transparent;color:#fff;border:1px solid #666}
+button.link{background:none;color:#aaa;font-weight:400;text-decoration:underline;padding:6px}
+#msg{color:#ff8a8a;font-size:14px;min-height:18px;text-align:center}
+/* Application */
+#app{height:100%;display:flex;flex-direction:column}
+#top{display:flex;align-items:center;justify-content:space-between;padding:10px 16px;border-bottom:1px solid #222;background:#000}
+#top .logo{font-size:20px}
+#feed{flex:1;overflow-y:scroll;scroll-snap-type:y mandatory}
+.post{position:relative;height:100%;scroll-snap-align:start;background:#000;display:flex;align-items:center;justify-content:center}
+.post video{width:100%;height:100%;object-fit:contain;background:#000}
+.info{position:absolute;left:14px;right:80px;bottom:18px;text-shadow:0 1px 4px #000}
+.info b{display:block;margin-bottom:4px}
+.side{position:absolute;right:10px;bottom:30px;display:flex;flex-direction:column;gap:18px;align-items:center}
+.side button{background:rgba(0,0,0,.55);color:#fff;border:1px solid #555;border-radius:50%;width:52px;height:52px;padding:0;font-size:20px}
+.side span{font-size:12px;display:block;text-align:center;margin-top:2px}
+#empty{padding:40px 24px;text-align:center;color:#bbb;line-height:1.5}
+#bar{display:flex;border-top:1px solid #222;background:#000;padding-bottom:env(safe-area-inset-bottom)}
+#bar button{flex:1;background:none;color:#fff;border-radius:0;font-weight:600;padding:14px 4px}
+/* Fenêtres */
+.panel{position:fixed;inset:0;background:#000;z-index:50;overflow:auto;padding:20px;display:flex;flex-direction:column;gap:14px;max-width:520px;margin:0 auto}
+.panel h2{font-size:22px}
+.note{color:#aaa;font-size:14px;line-height:1.4}
+</style>
+</head>
+<body>
+<div id="err"></div>
+
+<div id="loading">
+  <div class="logo">MA VIE</div>
+  <small id="loadtxt">Chargement…</small>
+</div>
+
+<div id="auth" class="hidden">
+  <div class="logo">MA VIE</div>
+  <input id="a_name" placeholder="Nom d'utilisateur (inscription)" autocomplete="username">
+  <input id="a_email" type="email" placeholder="E-mail" autocomplete="email">
+  <input id="a_pass" type="password" placeholder="Mot de passe (6 caractères minimum)" autocomplete="current-password">
+  <div id="msg"></div>
+  <button id="btnLogin">Se connecter</button>
+  <button id="btnSignup" class="sec">Créer mon compte</button>
+</div>
+
+<div id="app" class="hidden">
+  <div id="top"><div class="logo">MA VIE</div><button class="link" id="btnProfile">Profil</button></div>
+  <div id="feed"></div>
+  <div id="bar">
+    <button id="btnRefresh">Accueil</button>
+    <button id="btnPublish">+ Publier</button>
+    <button id="btnProfile2">Profil</button>
+  </div>
+</div>
+
+<div id="pPublish" class="panel hidden">
+  <h2>Publier une vidéo</h2>
+  <input id="p_url" type="url" placeholder="Lien de la vidéo (https://…mp4)">
+  <textarea id="p_desc" rows="3" placeholder="Description et #hashtags"></textarea>
+  <input id="p_music" placeholder="Musique (facultatif)">
+  <div class="note">Pour l'instant, on publie une vidéo avec son lien (.mp4). L'envoi direct depuis le téléphone viendra à l'étape suivante.</div>
+  <div id="p_msg" class="note"></div>
+  <button id="p_ok">Publier</button>
+  <button class="sec" id="p_cancel">Annuler</button>
+</div>
+
+<div id="pProfile" class="panel hidden">
+  <h2>Mon profil</h2>
+  <div id="pr_info" class="note"></div>
+  <button class="sec" id="pr_close">Fermer</button>
+  <button id="pr_logout">Se déconnecter</button>
+</div>
+
+<script>
+// Affiche les erreurs directement sur l'écran
+function showErr(t){var e=document.getElementById('err');e.style.display='block';e.textContent='Erreur : '+t;}
+window.addEventListener('error',function(ev){showErr(ev.message||'inconnue');});
+window.addEventListener('unhandledrejection',function(ev){showErr((ev.reason&&ev.reason.message)||String(ev.reason));});
+setTimeout(function(){
+  if(!window.__demarre){
+    document.getElementById('loadtxt').textContent='Le code n\'a pas démarré. Vérifie ta connexion internet.';
+    showErr('Firebase n\'a pas pu se charger (connexion ou fichier).');
+  }
+},8000);
+</script>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js";
+import { getAuth, onAuthStateChanged, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, updateProfile } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js";
+import { getFirestore, collection, addDoc, getDocs, query, orderBy, limit, doc, updateDoc, increment, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyDt_UcyL9pXwvfE-5NpOozMykCJh7zvvrs",
+  authDomain: "ma-vie-2b252.firebaseapp.com",
+  projectId: "ma-vie-2b252",
+  storageBucket: "ma-vie-2b252.firebasestorage.app",
+  messagingSenderId: "235933753646",
+  appId: "1:235933753646:web:91df8965e68affbf3f9abf"
+};
+
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db = getFirestore(app);
+window.__demarre = true;
+
+const $ = (id) => document.getElementById(id);
+const show = (id) => $(id).classList.remove('hidden');
+const hide = (id) => $(id).classList.add('hidden');
+
+function erreurFr(e){
+  const c = (e && e.code) || '';
+  if(c.includes('invalid-email')) return "Cette adresse e-mail n'est pas valide.";
+  if(c.includes('email-already-in-use')) return "Cette adresse e-mail a déjà un compte.";
+  if(c.includes('weak-password')) return "Mot de passe trop court (6 caractères minimum).";
+  if(c.includes('invalid-credential') || c.includes('wrong-password') || c.includes('user-not-found')) return "E-mail ou mot de passe incorrect.";
+  if(c.includes('network')) return "Pas de connexion internet.";
+  if(c.includes('permission-denied')) return "Accès refusé par les règles Firestore.";
+  return (e && e.message) || 'Erreur inconnue';
+}
+
+// ---------- Connexion / inscription ----------
+$('btnLogin').onclick = async () => {
+  $('msg').textContent = '';
+  try {
+    await signInWithEmailAndPassword(auth, $('a_email').value.trim(), $('a_pass').value);
+  } catch(e){ $('msg').textContent = erreurFr(e); }
+};
+$('btnSignup').onclick = async () => {
+  $('msg').textContent = '';
+  const nom = $('a_name').value.trim();
+  if(nom.length < 3){ $('msg').textContent = "Choisis un nom d'utilisateur (3 lettres minimum)."; return; }
+  try {
+    const cred = await createUserWithEmailAndPassword(auth, $('a_email').value.trim(), $('a_pass').value);
+    await updateProfile(cred.user, { displayName: nom });
+    afficherApp(cred.user);
+  } catch(e){ $('msg').textContent = erreurFr(e); }
+};
+
+onAuthStateChanged(auth, (user) => {
+  hide('loading');
+  if(user){ afficherApp(user); }
+  else { hide('app'); show('auth'); }
+});
+
+function afficherApp(user){
+  hide('auth'); show('app');
+  $('pr_info').textContent = 'Nom : ' + (user.displayName || '(sans nom)') + '\nE-mail : ' + user.email;
+  $('pr_info').style.whiteSpace = 'pre-line';
+  chargerFil();
+}
+
+// ---------- Fil de vidéos ----------
+const obs = new IntersectionObserver((entries) => {
+  entries.forEach(en => {
+    const v = en.target.querySelector('video');
+    if(!v) return;
+    if(en.isIntersecting){ v.play().catch(()=>{}); } else { v.pause(); }
+  });
+}, { threshold: 0.7 });
+
+async function chargerFil(){
+  const feed = $('feed');
+  feed.innerHTML = '';
+  try {
+    const snap = await getDocs(query(collection(db, 'videos'), orderBy('createdAt', 'desc'), limit(20)));
+    if(snap.empty){
+      const d = document.createElement('div');
+      d.id = 'empty';
+      d.textContent = "Aucune vidéo pour l'instant. Touche « + Publier » pour ajouter la première !";
+      feed.appendChild(d);
+      return;
+    }
+    snap.forEach(d => feed.appendChild(carteVideo(d.id, d.data())));
+  } catch(e){ showErr(erreurFr(e)); }
+}
+
+function carteVideo(id, data){
+  const post = document.createElement('div'); post.className = 'post';
+  const v = document.createElement('video');
+  v.src = data.url; v.loop = true; v.muted = true; v.playsInline = true; v.preload = 'metadata';
+  v.onclick = () => { v.muted = !v.muted; };
+  post.appendChild(v);
+
+  const info = document.createElement('div'); info.className = 'info';
+  const b = document.createElement('b'); b.textContent = '@' + (data.author || 'anonyme');
+  const p = document.createElement('div'); p.textContent = data.description || '';
+  info.append(b, p);
+  if(data.music){ const m = document.createElement('div'); m.textContent = '♪ ' + data.music; m.style.opacity = '.8'; info.appendChild(m); }
+  post.appendChild(info);
+
+  const side = document.createElement('div'); side.className = 'side';
+  const likeBox = document.createElement('div');
+  const lb = document.createElement('button'); lb.textContent = '♥';
+  const ln = document.createElement('span'); ln.textContent = data.likes || 0;
+  let n = data.likes || 0, deja = false;
+  lb.onclick = async () => {
+    if(deja) return; deja = true; n++; ln.textContent = n;
+    try { await updateDoc(doc(db, 'videos', id), { likes: increment(1) }); } catch(e){ showErr(erreurFr(e)); }
+  };
+  likeBox.append(lb, ln);
+  const shBox = document.createElement('div');
+  const sb = document.createElement('button'); sb.textContent = '↗';
+  const sn = document.createElement('span'); sn.textContent = 'Partager';
+  sb.onclick = async () => {
+    const lien = location.href;
+    try { if(navigator.share){ await navigator.share({ title: 'MA VIE', text: data.description || '', url: lien }); } else { await navigator.clipboard.writeText(lien); alert('Lien copié'); } } catch(e){}
+  };
+  shBox.append(sb, sn);
+  side.append(likeBox, shBox);
+  post.appendChild(side);
+
+  obs.observe(post);
+  return post;
+}
+
+// ---------- Publier ----------
+$('btnPublish').onclick = () => { $('p_msg').textContent = ''; show('pPublish'); };
+$('p_cancel').onclick = () => hide('pPublish');
+$('p_ok').onclick = async () => {
+  const url = $('p_url').value.trim();
+  if(!/^https?:\/\//i.test(url)){ $('p_msg').textContent = "Le lien doit commencer par https://"; return; }
+  const user = auth.currentUser;
+  $('p_msg').textContent = 'Publication…';
+  try {
+    await addDoc(collection(db, 'videos'), {
+      url: url,
+      description: $('p_desc').value.trim(),
+      music: $('p_music').value.trim(),
+      author: user.displayName || 'anonyme',
+      uid: user.uid,
+      likes: 0,
+      createdAt: serverTimestamp()
+    });
+    $('p_url').value = ''; $('p_desc').value = ''; $('p_music').value = '';
+    hide('pPublish');
+    chargerFil();
+  } catch(e){ $('p_msg').textContent = erreurFr(e); }
+};
+
+// ---------- Profil / navigation ----------
+const ouvrirProfil = () => show('pProfile');
+$('btnProfile').onclick = ouvrirProfil;
+$('btnProfile2').onclick = ouvrirProfil;
+$('pr_close').onclick = () => hide('pProfile');
+$('pr_logout').onclick = async () => { await signOut(auth); hide('pProfile'); };
+$('btnRefresh').onclick = chargerFil;
+</script>
+</body>
+</html>
