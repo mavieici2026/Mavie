@@ -1,0 +1,351 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<meta name="theme-color" content="#000000">
+<title>MA VIE</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+  html,body{height:100%;background:#000;color:#fff;font-family:-apple-system,"Segoe UI",Roboto,Arial,sans-serif}
+  button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
+  input,textarea{font:inherit;color:#fff;background:#111;border:1px solid #333;border-radius:10px;padding:12px;width:100%;outline:none}
+  input:focus,textarea:focus{border-color:#fff}
+  #app{height:100dvh;display:flex;flex-direction:column}
+  .logo{font-weight:900;letter-spacing:4px;font-size:34px;text-align:center}
+  .btn{background:#fff;color:#000;font-weight:700;border-radius:10px;padding:13px;width:100%}
+  .btn.ghost{background:transparent;color:#fff;border:1px solid #555}
+  .btn.small{width:auto;padding:7px 14px;font-size:14px}
+  .center{flex:1;display:flex;flex-direction:column;justify-content:center;gap:12px;padding:24px;max-width:420px;margin:0 auto;width:100%}
+  .muted{color:#999;font-size:14px;text-align:center}
+  .link{color:#fff;text-decoration:underline;cursor:pointer}
+  .main{flex:1;min-height:0;position:relative}
+  nav{height:60px;display:flex;border-top:1px solid #222;background:#000}
+  nav button{flex:1;font-size:12px;color:#888;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px}
+  nav button.on{color:#fff}
+  nav button span{font-size:22px;line-height:1}
+  .feed{height:100%;overflow-y:scroll;scroll-snap-type:y mandatory}
+  .card{height:100%;scroll-snap-align:start;scroll-snap-stop:always;position:relative;background:#000;display:flex;align-items:center;justify-content:center}
+  .card video{width:100%;height:100%;object-fit:contain;background:#000}
+  .info{position:absolute;left:14px;right:80px;bottom:18px;text-shadow:0 1px 4px #000;display:flex;flex-direction:column;gap:6px}
+  .info .who{font-weight:800;font-size:17px;display:flex;align-items:center;gap:10px}
+  .info .txt{font-size:14px}
+  .acts{position:absolute;right:10px;bottom:30px;display:flex;flex-direction:column;gap:18px;align-items:center}
+  .acts button{display:flex;flex-direction:column;align-items:center;font-size:12px;gap:2px;text-shadow:0 1px 4px #000}
+  .acts button span{font-size:32px;line-height:1}
+  .acts button.liked span{color:#fff;filter:drop-shadow(0 0 6px #fff)}
+  .avatar{width:44px;height:44px;border-radius:50%;background:#222;object-fit:cover;border:1px solid #444}
+  .page{height:100%;overflow-y:auto;padding:18px;display:flex;flex-direction:column;gap:12px;max-width:520px;margin:0 auto}
+  .page h2{font-size:22px}
+  label{font-size:13px;color:#aaa;margin-bottom:-6px}
+  .prof{display:flex;flex-direction:column;align-items:center;gap:8px}
+  .prof .avatar{width:96px;height:96px}
+  .stats{display:flex;gap:28px}
+  .stats div{text-align:center}
+  .stats b{display:block;font-size:20px}
+  .grid{display:grid;grid-template-columns:repeat(3,1fr);gap:3px}
+  .tile{aspect-ratio:9/16;background:#111;position:relative;overflow:hidden;cursor:pointer}
+  .tile video{width:100%;height:100%;object-fit:cover}
+  .tile i{position:absolute;left:4px;bottom:4px;font-size:11px;font-style:normal;text-shadow:0 1px 3px #000}
+  .sheet{position:fixed;inset:0;background:rgba(0,0,0,.7);display:flex;align-items:flex-end;z-index:20}
+  .sheet>div{background:#111;width:100%;max-height:75dvh;border-radius:18px 18px 0 0;padding:16px;display:flex;flex-direction:column;gap:10px}
+  .clist{overflow-y:auto;flex:1;display:flex;flex-direction:column;gap:10px;min-height:80px}
+  .cm b{font-size:13px}.cm p{font-size:14px;color:#ddd}
+  .row{display:flex;gap:8px}
+  .viewer{position:fixed;inset:0;background:#000;z-index:30;display:flex;flex-direction:column}
+  .viewer video{flex:1;min-height:0;width:100%;object-fit:contain}
+  .viewer .row{padding:12px}
+  #toast{position:fixed;left:50%;top:16px;transform:translateX(-50%);background:#fff;color:#000;padding:10px 16px;border-radius:10px;font-weight:600;font-size:14px;z-index:50;display:none;max-width:90%;text-align:center}
+  .empty{padding:40px 20px;text-align:center;color:#999}
+</style>
+</head>
+<body>
+<div id="app"></div>
+<div id="toast"></div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js";
+import { getAuth, onAuthStateChanged, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, updateProfile } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js";
+import { getFirestore, collection, doc, setDoc, getDoc, getDocs, addDoc, deleteDoc, query, orderBy, limit, where, serverTimestamp, getCountFromServer } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyDt_UcyL9pXwvfE-5NpOozMykCJh7zvvrs",
+  authDomain: "ma-vie-2b252.firebaseapp.com",
+  projectId: "ma-vie-2b252",
+  storageBucket: "ma-vie-2b252.firebasestorage.app",
+  messagingSenderId: "235933753646",
+  appId: "1:235933753646:web:91df8965e68affbf3f9abf"
+};
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db = getFirestore(app);
+
+const $app = document.getElementById("app");
+let me = null;        // utilisateur connecté
+let myData = {};      // son profil
+let tab = "feed";
+let observer = null;
+
+/* ---------- outils ---------- */
+function h(tag, attrs = {}, ...kids) {
+  const el = document.createElement(tag);
+  for (const [k, v] of Object.entries(attrs)) {
+    if (k === "class") el.className = v;
+    else if (k.startsWith("on")) el.addEventListener(k.slice(2), v);
+    else if (v !== false && v != null) el.setAttribute(k, v);
+  }
+  for (const kid of kids.flat()) {
+    if (kid == null || kid === false) continue;
+    el.append(kid.nodeType ? kid : document.createTextNode(kid));
+  }
+  return el;
+}
+function toast(msg) {
+  const t = document.getElementById("toast");
+  t.textContent = msg; t.style.display = "block";
+  clearTimeout(toast.t); toast.t = setTimeout(() => t.style.display = "none", 3500);
+}
+function erreur(e) {
+  console.error(e);
+  const c = e && e.code || "";
+  const m = {
+    "auth/email-already-in-use": "Cet e-mail est déjà utilisé.",
+    "auth/invalid-email": "E-mail invalide.",
+    "auth/weak-password": "Mot de passe trop court (6 caractères minimum).",
+    "auth/invalid-credential": "E-mail ou mot de passe incorrect.",
+    "auth/wrong-password": "E-mail ou mot de passe incorrect.",
+    "auth/user-not-found": "Aucun compte avec cet e-mail.",
+    "auth/network-request-failed": "Pas de connexion internet.",
+    "permission-denied": "Permission refusée par Firestore (les règles doivent être ajustées)."
+  }[c];
+  toast(m || ("Erreur : " + (e.message || c)));
+}
+const avatarUrl = (d) => (d && d.photo) || "data:image/svg+xml;utf8," + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100"><rect width="100" height="100" fill="#222"/><circle cx="50" cy="38" r="18" fill="#666"/><ellipse cx="50" cy="90" rx="32" ry="24" fill="#666"/></svg>');
+async function count(q) { try { return (await getCountFromServer(q)).data().count; } catch { return 0; } }
+const userCache = {};
+async function getUser(uid) {
+  if (userCache[uid]) return userCache[uid];
+  try { const s = await getDoc(doc(db, "users", uid)); userCache[uid] = s.exists() ? s.data() : { username: "utilisateur" }; }
+  catch { userCache[uid] = { username: "utilisateur" }; }
+  return userCache[uid];
+}
+
+/* ---------- écran connexion / inscription ---------- */
+function authView(mode = "login") {
+  const isSignup = mode === "signup";
+  const nom = h("input", { placeholder: "Nom d'utilisateur", autocomplete: "username", maxlength: 20 });
+  const email = h("input", { type: "email", placeholder: "E-mail (Gmail)", autocomplete: "email" });
+  const pass = h("input", { type: "password", placeholder: "Mot de passe (6 caractères min.)", autocomplete: isSignup ? "new-password" : "current-password" });
+  const go = h("button", { class: "btn", onclick: async () => {
+    go.disabled = true;
+    try {
+      if (isSignup) {
+        const u = nom.value.trim();
+        if (u.length < 3) throw { message: "Le nom d'utilisateur doit avoir au moins 3 caractères." };
+        const c = await createUserWithEmailAndPassword(auth, email.value.trim(), pass.value);
+        await updateProfile(c.user, { displayName: u });
+        await setDoc(doc(db, "users", c.user.uid), { username: u, photo: "", createdAt: serverTimestamp() });
+      } else {
+        await signInWithEmailAndPassword(auth, email.value.trim(), pass.value);
+      }
+    } catch (e) { erreur(e); go.disabled = false; }
+  } }, isSignup ? "Créer mon compte" : "Se connecter");
+  $app.replaceChildren(h("div", { class: "center" },
+    h("div", { class: "logo" }, "MA VIE"),
+    h("p", { class: "muted" }, "Partage ta vie en vidéo"),
+    isSignup && nom, email, pass, go,
+    h("p", { class: "muted" }, isSignup ? "Déjà un compte ? " : "Pas encore de compte ? ",
+      h("span", { class: "link", onclick: () => authView(isSignup ? "login" : "signup") }, isSignup ? "Se connecter" : "S'inscrire"))
+  ));
+}
+
+/* ---------- structure principale avec menu du bas ---------- */
+function shell() {
+  const main = h("div", { class: "main", id: "main" });
+  const btn = (id, ico, txt) => h("button", { class: tab === id ? "on" : "", onclick: () => { tab = id; shell(); } }, h("span", {}, ico), txt);
+  $app.replaceChildren(main, h("nav", {}, btn("feed", "⌂", "Accueil"), btn("pub", "＋", "Publier"), btn("me", "☻", "Profil")));
+  if (tab === "feed") feedView(main);
+  else if (tab === "pub") publishView(main);
+  else profileView(main, me.uid, true);
+}
+
+/* ---------- fil de vidéos ---------- */
+async function feedView(main) {
+  main.replaceChildren(h("div", { class: "empty" }, "Chargement…"));
+  let snap;
+  try { snap = await getDocs(query(collection(db, "videos"), orderBy("createdAt", "desc"), limit(30))); }
+  catch (e) { erreur(e); main.replaceChildren(h("div", { class: "empty" }, "Impossible de charger les vidéos.")); return; }
+  if (snap.empty) { main.replaceChildren(h("div", { class: "empty" }, "Aucune vidéo pour l'instant.", h("br"), "Sois le premier à publier !")); return; }
+  const feed = h("div", { class: "feed" });
+  if (observer) observer.disconnect();
+  observer = new IntersectionObserver((es) => es.forEach(en => {
+    const v = en.target.querySelector("video");
+    if (en.isIntersecting) v.play().catch(() => {}); else v.pause();
+  }), { threshold: 0.7 });
+  for (const d of snap.docs) { const c = await videoCard(d.id, d.data()); feed.append(c); observer.observe(c); }
+  main.replaceChildren(feed);
+}
+
+async function videoCard(id, v) {
+  const author = await getUser(v.authorId);
+  const vid = h("video", { src: v.url, loop: true, playsinline: true, muted: true, preload: "metadata" });
+  vid.muted = true;
+  vid.addEventListener("click", () => { vid.muted = !vid.muted; if (vid.paused) vid.play(); });
+  vid.addEventListener("error", () => toast("Une vidéo n'a pas pu être lue (lien invalide)."));
+
+  const likeRef = doc(db, "videos", id, "likes", me.uid);
+  let liked = false;
+  let nbLikes = await count(collection(db, "videos", id, "likes"));
+  let nbCom = await count(collection(db, "videos", id, "comments"));
+  try { liked = (await getDoc(likeRef)).exists(); } catch {}
+  const likeCount = h("div", {}, String(nbLikes));
+  const likeBtn = h("button", { class: liked ? "liked" : "", onclick: async () => {
+    try {
+      if (liked) { await deleteDoc(likeRef); nbLikes--; } else { await setDoc(likeRef, { at: serverTimestamp() }); nbLikes++; }
+      liked = !liked; likeBtn.className = liked ? "liked" : ""; likeBtn.firstChild.textContent = liked ? "♥" : "♡"; likeCount.textContent = nbLikes;
+    } catch (e) { erreur(e); }
+  } }, h("span", {}, liked ? "♥" : "♡"), likeCount);
+
+  const comCount = h("div", {}, String(nbCom));
+  const comBtn = h("button", { onclick: () => commentsSheet(id, (n) => comCount.textContent = n, () => +comCount.textContent) }, h("span", {}, "💬"), comCount);
+  const shareBtn = h("button", { onclick: async () => {
+    const data = { title: "MA VIE", text: (v.description || "Regarde cette vidéo sur MA VIE"), url: location.href.split("#")[0] };
+    try { if (navigator.share) await navigator.share(data); else { await navigator.clipboard.writeText(data.url); toast("Lien copié !"); } } catch {}
+  } }, h("span", {}, "➤"), "Partager");
+
+  const follow = await followButton(v.authorId);
+  return h("div", { class: "card" }, vid,
+    h("div", { class: "info" },
+      h("div", { class: "who" }, h("img", { class: "avatar", src: avatarUrl(author), style: "width:34px;height:34px" }), "@" + (author.username || "utilisateur"), follow),
+      v.presenter && h("div", { class: "txt" }, "🎤 " + v.presenter),
+      v.description && h("div", { class: "txt" }, v.description),
+      v.music && h("div", { class: "txt" }, "♫ " + v.music)),
+    h("div", { class: "acts" }, likeBtn, comBtn, shareBtn));
+}
+
+async function followButton(uid) {
+  if (uid === me.uid) return null;
+  const mine = doc(db, "users", me.uid, "following", uid);
+  const theirs = doc(db, "users", uid, "followers", me.uid);
+  let on = false;
+  try { on = (await getDoc(mine)).exists(); } catch {}
+  const b = h("button", { class: "btn small" + (on ? " ghost" : ""), onclick: async (ev) => {
+    ev.stopPropagation();
+    try {
+      if (on) { await deleteDoc(mine); await deleteDoc(theirs); } else { await setDoc(mine, { at: serverTimestamp() }); await setDoc(theirs, { at: serverTimestamp() }); }
+      on = !on; b.textContent = on ? "Abonné" : "Suivre"; b.className = "btn small" + (on ? " ghost" : "");
+    } catch (e) { erreur(e); }
+  } }, on ? "Abonné" : "Suivre");
+  return b;
+}
+
+/* ---------- commentaires ---------- */
+async function commentsSheet(videoId, setCount, getCount) {
+  const list = h("div", { class: "clist" }, h("p", { class: "muted" }, "Chargement…"));
+  const input = h("input", { placeholder: "Ajouter un commentaire…", maxlength: 300 });
+  const close = () => sheet.remove();
+  const send = h("button", { class: "btn small", onclick: async () => {
+    const t = input.value.trim(); if (!t) return;
+    try {
+      await addDoc(collection(db, "videos", videoId, "comments"), { text: t, authorId: me.uid, username: myData.username || me.displayName || "utilisateur", createdAt: serverTimestamp() });
+      input.value = ""; if (list.querySelector(".muted")) list.replaceChildren();
+      list.append(h("div", { class: "cm" }, h("b", {}, "@" + (myData.username || "moi")), h("p", {}, t)));
+      setCount(getCount() + 1);
+    } catch (e) { erreur(e); }
+  } }, "Envoyer");
+  const sheet = h("div", { class: "sheet", onclick: (e) => { if (e.target === sheet) close(); } },
+    h("div", {}, h("div", { class: "row", style: "justify-content:space-between;align-items:center" }, h("b", {}, "Commentaires"), h("button", { onclick: close, style: "font-size:22px" }, "✕")), list, h("div", { class: "row" }, input, send)));
+  document.body.append(sheet);
+  try {
+    const s = await getDocs(query(collection(db, "videos", videoId, "comments"), orderBy("createdAt", "asc"), limit(100)));
+    list.replaceChildren();
+    if (s.empty) list.append(h("p", { class: "muted" }, "Pas encore de commentaire."));
+    s.forEach(d => { const c = d.data(); list.append(h("div", { class: "cm" }, h("b", {}, "@" + (c.username || "utilisateur")), h("p", {}, c.text))); });
+  } catch (e) { erreur(e); list.replaceChildren(h("p", { class: "muted" }, "Impossible de charger.")); }
+}
+
+/* ---------- publier une vidéo ---------- */
+function publishView(main) {
+  const url = h("input", { type: "url", placeholder: "https://…/ma-video.mp4", inputmode: "url" });
+  const presenter = h("input", { placeholder: "Nom du présentateur", maxlength: 40 });
+  const desc = h("textarea", { rows: 3, placeholder: "Description avec #hashtags", maxlength: 300 });
+  const music = h("input", { placeholder: "Musique (ex : Artiste – Titre)", maxlength: 80 });
+  const go = h("button", { class: "btn", onclick: async () => {
+    const link = url.value.trim();
+    if (!/^https?:\/\//i.test(link)) return toast("Colle un lien de vidéo qui commence par https://");
+    go.disabled = true; go.textContent = "Vérification de la vidéo…";
+    try {
+      const dur = await new Promise((ok, ko) => {
+        const t = document.createElement("video"); t.preload = "metadata";
+        t.onloadedmetadata = () => ok(t.duration); t.onerror = () => ko({ message: "Ce lien n'est pas une vidéo lisible (il doit mener directement à un fichier .mp4)." });
+        setTimeout(() => ko({ message: "Le lien met trop de temps à répondre." }), 15000); t.src = link;
+      });
+      if (dur < 2) throw { message: "La vidéo est trop courte (minimum 2 secondes)." };
+      if (dur >= 1800) throw { message: "La vidéo est trop longue (moins de 30 minutes)." };
+      await addDoc(collection(db, "videos"), { url: link, authorId: me.uid, presenter: presenter.value.trim(), description: desc.value.trim(), music: music.value.trim(), duration: Math.round(dur), createdAt: serverTimestamp() });
+      toast("Vidéo publiée !"); tab = "feed"; shell();
+    } catch (e) { erreur(e); go.disabled = false; go.textContent = "Publier"; }
+  } }, "Publier");
+  main.replaceChildren(h("div", { class: "page" },
+    h("h2", {}, "Publier une vidéo"),
+    h("p", { class: "muted", style: "text-align:left" }, "Durée : de 2 secondes à moins de 30 minutes. Pour l'instant, colle le lien direct de ta vidéo (.mp4)."),
+    h("label", {}, "Lien de la vidéo"), url,
+    h("label", {}, "Présentateur"), presenter,
+    h("label", {}, "Description"), desc,
+    h("label", {}, "Musique"), music, go));
+}
+
+/* ---------- profil ---------- */
+async function profileView(main, uid, mine) {
+  main.replaceChildren(h("div", { class: "empty" }, "Chargement…"));
+  const u = mine ? myData : await getUser(uid);
+  const [abonnes, abonnements] = await Promise.all([count(collection(db, "users", uid, "followers")), count(collection(db, "users", uid, "following"))]);
+  let vids = [];
+  try { const s = await getDocs(query(collection(db, "videos"), where("authorId", "==", uid))); vids = s.docs.map(d => ({ id: d.id, ...d.data() })); vids.sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0)); } catch (e) { erreur(e); }
+  const img = h("img", { class: "avatar", src: avatarUrl(u) });
+  const file = h("input", { type: "file", accept: "image/*", style: "display:none", onchange: async () => {
+    const f = file.files[0]; if (!f) return;
+    try {
+      const data = await resize(f, 200);
+      await setDoc(doc(db, "users", me.uid), { photo: data }, { merge: true });
+      myData.photo = data; delete userCache[me.uid]; img.src = data; toast("Photo mise à jour !");
+    } catch (e) { erreur(e); }
+  } });
+  main.replaceChildren(h("div", { class: "page" },
+    h("div", { class: "prof" }, img, h("b", { style: "font-size:20px" }, "@" + (u.username || "utilisateur")),
+      h("div", { class: "stats" }, h("div", {}, h("b", {}, String(vids.length)), "Vidéos"), h("div", {}, h("b", {}, String(abonnes)), "Abonnés"), h("div", {}, h("b", {}, String(abonnements)), "Abonnements")),
+      mine && h("div", { class: "row" }, h("button", { class: "btn ghost small", onclick: () => file.click() }, "Changer la photo"), h("button", { class: "btn ghost small", onclick: () => signOut(auth) }, "Se déconnecter")), file),
+    vids.length ? h("div", { class: "grid" }, vids.map(v => h("div", { class: "tile", onclick: () => viewer(v, mine) }, h("video", { src: v.url + "#t=0.5", preload: "metadata", muted: true, playsinline: true }), h("i", {}, v.description ? v.description.slice(0, 24) : "")))) : h("div", { class: "empty" }, mine ? "Tu n'as pas encore publié de vidéo." : "Aucune vidéo.")));
+}
+function resize(file, size) {
+  return new Promise((ok, ko) => {
+    const im = new Image(); const r = new FileReader();
+    r.onload = () => { im.src = r.result; };
+    im.onload = () => {
+      const c = document.createElement("canvas"); c.width = c.height = size; const x = c.getContext("2d");
+      const s = Math.min(im.width, im.height); x.drawImage(im, (im.width - s) / 2, (im.height - s) / 2, s, s, 0, 0, size, size);
+      ok(c.toDataURL("image/jpeg", 0.7));
+    };
+    im.onerror = () => ko({ message: "Image illisible." }); r.onerror = () => ko({ message: "Image illisible." }); r.readAsDataURL(file);
+  });
+}
+function viewer(v, mine) {
+  const close = () => w.remove();
+  const w = h("div", { class: "viewer" }, h("video", { src: v.url, controls: true, autoplay: true, playsinline: true }),
+    h("div", { class: "row" }, h("button", { class: "btn ghost", onclick: close }, "Fermer"),
+      mine && h("button", { class: "btn ghost", onclick: async () => { if (!confirm("Supprimer cette vidéo ?")) return; try { await deleteDoc(doc(db, "videos", v.id)); close(); toast("Vidéo supprimée."); shell(); } catch (e) { erreur(e); } } }, "Supprimer")));
+  document.body.append(w);
+}
+
+/* ---------- démarrage ---------- */
+onAuthStateChanged(auth, async (user) => {
+  me = user;
+  if (!user) { authView("login"); return; }
+  try { const s = await getDoc(doc(db, "users", user.uid)); myData = s.exists() ? s.data() : {}; } catch { myData = {}; }
+  if (!myData.username) myData.username = user.displayName || "utilisateur";
+  userCache[user.uid] = myData;
+  shell();
+});
+</script>
+</body>
+</html>
