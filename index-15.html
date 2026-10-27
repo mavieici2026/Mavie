@@ -1,0 +1,431 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>MA VIE</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+html,body{height:100%;background:#000;color:#fff;font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;overflow:hidden}
+button,input,textarea{font:inherit;color:inherit}
+.logo{font-weight:900;letter-spacing:5px;font-size:34px;text-align:center}
+#boot{position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;background:#000;z-index:100;text-align:center;padding:20px}
+#boot small{color:#aaa;letter-spacing:0;font-weight:400;font-size:14px}
+.screen{display:none;height:100%;width:100%}
+.screen.on{display:flex;flex-direction:column}
+#auth{justify-content:center;padding:28px;gap:14px;max-width:420px;margin:0 auto}
+input,textarea{background:#111;border:1px solid #333;border-radius:10px;padding:13px;width:100%;outline:none;font-size:16px}
+input:focus,textarea:focus{border-color:#fff}
+textarea{resize:none;height:80px}
+.btn{background:#fff;color:#000;border:0;border-radius:10px;padding:13px;font-weight:700;width:100%;cursor:pointer;font-size:16px}
+.btn.ghost{background:transparent;color:#fff;border:1px solid #444}
+.link{background:none;border:0;color:#aaa;text-decoration:underline;padding:6px;cursor:pointer;font-size:14px}
+.err{color:#ff6b6b;font-size:14px;min-height:18px;text-align:center}
+#main{flex:1;position:relative;min-height:0}
+.tab{display:none;position:absolute;inset:0}
+.tab.on{display:block}
+#feed{height:100%;overflow-y:scroll;scroll-snap-type:y mandatory}
+.card{position:relative;height:100%;scroll-snap-align:start;scroll-snap-stop:always;background:#000;overflow:hidden}
+.card video{width:100%;height:100%;object-fit:contain;background:#000}
+.tap{position:absolute;inset:0 70px 120px 0}
+.hint{position:absolute;top:14px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,.7);padding:6px 12px;border-radius:20px;font-size:13px;opacity:0;transition:opacity .3s;pointer-events:none;white-space:nowrap}
+.info{position:absolute;left:14px;right:80px;bottom:18px;text-shadow:0 1px 4px #000;pointer-events:none}
+.info b{font-size:16px}
+.info p{font-size:14px;margin-top:4px;word-wrap:break-word}
+.info .mus{font-size:13px;color:#ddd;margin-top:4px}
+.side{position:absolute;right:10px;bottom:24px;display:flex;flex-direction:column;gap:16px;align-items:center}
+.act{background:rgba(255,255,255,.14);border:0;border-radius:50%;width:52px;height:52px;font-size:22px;cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;line-height:1}
+.act span{font-size:11px;margin-top:2px}
+.act.on{background:#fff;color:#000}
+.follow{background:#fff;color:#000;border:0;border-radius:20px;padding:6px 12px;font-weight:700;font-size:13px;margin-left:8px;cursor:pointer;pointer-events:auto}
+.follow.on{background:transparent;color:#fff;border:1px solid #fff}
+.empty{height:100%;display:flex;align-items:center;justify-content:center;text-align:center;padding:30px;color:#bbb;line-height:1.6}
+nav{display:flex;border-top:1px solid #222;background:#000;padding-bottom:env(safe-area-inset-bottom)}
+nav button{flex:1;background:none;border:0;padding:14px 0;color:#888;font-weight:600;font-size:14px;cursor:pointer}
+nav button.on{color:#fff}
+nav .plus{color:#000;background:#fff;flex:0 0 56px;margin:6px 0;border-radius:10px;font-size:24px;padding:4px 0;font-weight:700}
+.sheet{position:fixed;inset:0;background:rgba(0,0,0,.7);display:none;align-items:flex-end;z-index:50}
+.sheet.on{display:flex}
+.panel{background:#111;width:100%;max-height:85%;overflow-y:auto;border-radius:18px 18px 0 0;padding:18px;display:flex;flex-direction:column;gap:10px;max-width:520px;margin:0 auto}
+.panel h3{font-size:18px}
+.cm{padding:8px 0;border-bottom:1px solid #222;font-size:14px;word-wrap:break-word}
+.cm b{color:#ccc}
+#profile{overflow-y:auto;padding:20px}
+.av{width:90px;height:90px;border-radius:50%;background:#222;display:flex;align-items:center;justify-content:center;font-size:38px;font-weight:800;margin:0 auto 10px;overflow:hidden;border:2px solid #fff}
+.av img{width:100%;height:100%;object-fit:cover}
+.stats{display:flex;justify-content:center;gap:28px;margin:14px 0;text-align:center}
+.stats b{display:block;font-size:20px}
+.stats small{color:#aaa}
+.pp{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:12px;background:#111;border-radius:10px;margin-top:8px;font-size:14px}
+.pp button{background:none;border:1px solid #444;border-radius:8px;padding:6px 10px;cursor:pointer;font-size:13px}
+#toast{position:fixed;left:50%;bottom:90px;transform:translateX(-50%);background:#fff;color:#000;padding:10px 16px;border-radius:20px;font-size:14px;z-index:200;max-width:90%;text-align:center;display:none}
+</style>
+</head>
+<body>
+
+<div id="boot"><div class="logo">MA VIE</div><small id="bootmsg">Chargement…</small></div>
+
+<section id="auth" class="screen">
+  <div class="logo">MA VIE</div>
+  <input id="aUser" placeholder="Nom d'utilisateur" autocomplete="username" style="display:none">
+  <input id="aMail" type="email" placeholder="Adresse e-mail" autocomplete="email">
+  <input id="aPass" type="password" placeholder="Mot de passe (6 caractères minimum)" autocomplete="current-password">
+  <div class="err" id="aErr"></div>
+  <button class="btn" id="aGo">Se connecter</button>
+  <button class="link" id="aSwitch">Pas de compte ? Créer un compte</button>
+</section>
+
+<section id="app" class="screen">
+  <div id="main">
+    <div id="tabHome" class="tab on"><div id="feed"></div></div>
+    <div id="tabProfile" class="tab"><div id="profile"></div></div>
+  </div>
+  <nav>
+    <button id="nHome" class="on">Accueil</button>
+    <button id="nPlus" class="plus">+</button>
+    <button id="nProfile">Profil</button>
+  </nav>
+</section>
+
+<div class="sheet" id="shPub">
+  <div class="panel">
+    <h3>Publier une vidéo</h3>
+    <input id="pUrl" placeholder="Lien de la vidéo (finit par .mp4)" inputmode="url">
+    <input id="pPres" placeholder="Présentateur">
+    <textarea id="pDesc" placeholder="Description avec #hashtags"></textarea>
+    <input id="pMus" placeholder="Musique (ex : Artiste - Titre)">
+    <div class="err" id="pErr"></div>
+    <button class="btn" id="pGo">Publier</button>
+    <button class="btn ghost" id="pCancel">Annuler</button>
+  </div>
+</div>
+
+<div class="sheet" id="shCom">
+  <div class="panel">
+    <h3>Commentaires</h3>
+    <div id="cList"></div>
+    <input id="cText" placeholder="Écrire un commentaire…">
+    <button class="btn" id="cGo">Envoyer</button>
+    <button class="btn ghost" id="cClose">Fermer</button>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import { getAuth, onAuthStateChanged, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, updateProfile } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+import { getFirestore, collection, doc, setDoc, getDoc, getDocs, addDoc, deleteDoc, updateDoc, query, orderBy, limit, where, serverTimestamp, increment } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyDt_UcyL9pXwvfE-5NpOozMykCJh7zvvrs",
+  authDomain: "ma-vie-2b252.firebaseapp.com",
+  projectId: "ma-vie-2b252",
+  storageBucket: "ma-vie-2b252.firebasestorage.app",
+  messagingSenderId: "235933753646",
+  appId: "1:235933753646:web:91df8965e68affbf3f9abf"
+};
+
+const $ = s => document.querySelector(s);
+function h(tag, props = {}, ...kids) {
+  const e = document.createElement(tag);
+  for (const k in props) {
+    if (k === "class") e.className = props[k];
+    else if (k.startsWith("on")) e[k] = props[k];
+    else e.setAttribute(k, props[k]);
+  }
+  kids.flat().filter(x => x != null && x !== false).forEach(c => e.append(c));
+  return e;
+}
+let tt;
+function toast(m) {
+  const t = $("#toast"); t.textContent = m; t.style.display = "block";
+  clearTimeout(tt); tt = setTimeout(() => t.style.display = "none", 3500);
+}
+function msg(e) {
+  const c = (e && e.code) || "";
+  const map = {
+    "auth/invalid-credential": "E-mail ou mot de passe incorrect.",
+    "auth/wrong-password": "Mot de passe incorrect.",
+    "auth/user-not-found": "Aucun compte avec cet e-mail.",
+    "auth/email-already-in-use": "Cet e-mail est déjà utilisé.",
+    "auth/weak-password": "Mot de passe trop court (6 caractères minimum).",
+    "auth/invalid-email": "Adresse e-mail invalide.",
+    "auth/network-request-failed": "Pas de connexion internet.",
+    "auth/too-many-requests": "Trop d'essais. Réessayez dans quelques minutes.",
+    "permission-denied": "Permission refusée par les règles Firestore."
+  };
+  return map[c] || (e && e.message) || "Erreur inconnue.";
+}
+window.addEventListener("error", e => { $("#bootmsg").textContent = "Erreur : " + e.message; toast("Erreur : " + e.message); });
+window.addEventListener("unhandledrejection", e => toast("Erreur : " + msg(e.reason)));
+
+const bootTimer = setTimeout(() => { $("#bootmsg").textContent = "Connexion lente… vérifiez votre internet."; }, 8000);
+
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db = getFirestore(app);
+let me = null;
+
+// ---------- Connexion / inscription ----------
+let signup = false;
+function setMode(s) {
+  signup = s;
+  $("#aUser").style.display = s ? "block" : "none";
+  $("#aGo").textContent = s ? "Créer mon compte" : "Se connecter";
+  $("#aSwitch").textContent = s ? "J'ai déjà un compte" : "Pas de compte ? Créer un compte";
+  $("#aErr").textContent = "";
+}
+$("#aSwitch").onclick = () => setMode(!signup);
+$("#aGo").onclick = async () => {
+  const mail = $("#aMail").value.trim(), pass = $("#aPass").value, user = $("#aUser").value.trim();
+  $("#aErr").textContent = "";
+  if (!mail || !pass) { $("#aErr").textContent = "Entrez votre e-mail et votre mot de passe."; return; }
+  if (signup && user.length < 3) { $("#aErr").textContent = "Nom d'utilisateur : 3 caractères minimum."; return; }
+  $("#aGo").disabled = true;
+  try {
+    if (signup) {
+      const c = await createUserWithEmailAndPassword(auth, mail, pass);
+      await updateProfile(c.user, { displayName: user });
+      await setDoc(doc(db, "users", c.user.uid), { username: user, photoURL: "", createdAt: serverTimestamp() });
+      me = c.user;
+      showApp();
+    } else {
+      await signInWithEmailAndPassword(auth, mail, pass);
+    }
+  } catch (e) { $("#aErr").textContent = msg(e); }
+  $("#aGo").disabled = false;
+};
+
+onAuthStateChanged(auth, u => {
+  clearTimeout(bootTimer);
+  $("#boot").style.display = "none";
+  me = u;
+  if (u) showApp();
+  else { $("#app").classList.remove("on"); $("#auth").classList.add("on"); }
+});
+
+function showApp() {
+  $("#auth").classList.remove("on");
+  $("#app").classList.add("on");
+  goTab("home");
+}
+
+// ---------- Onglets ----------
+function goTab(t) {
+  $("#tabHome").classList.toggle("on", t === "home");
+  $("#tabProfile").classList.toggle("on", t === "profile");
+  $("#nHome").classList.toggle("on", t === "home");
+  $("#nProfile").classList.toggle("on", t === "profile");
+  if (t === "home") loadFeed(); else { pauseAll(); loadProfile(); }
+}
+$("#nHome").onclick = () => goTab("home");
+$("#nProfile").onclick = () => goTab("profile");
+$("#nPlus").onclick = () => { $("#pErr").textContent = ""; $("#shPub").classList.add("on"); };
+$("#pCancel").onclick = () => $("#shPub").classList.remove("on");
+
+// ---------- Fil de vidéos ----------
+const io = new IntersectionObserver(es => {
+  es.forEach(en => {
+    const v = en.target;
+    if (en.isIntersecting && en.intersectionRatio > 0.7) v.play().catch(() => {});
+    else v.pause();
+  });
+}, { threshold: [0, 0.7, 1] });
+function pauseAll() { document.querySelectorAll("video").forEach(v => v.pause()); }
+
+async function loadFeed() {
+  const box = $("#feed");
+  box.replaceChildren(h("div", { class: "empty" }, "Chargement…"));
+  try {
+    const snap = await getDocs(query(collection(db, "posts"), orderBy("createdAt", "desc"), limit(30)));
+    box.replaceChildren();
+    if (snap.empty) {
+      box.append(h("div", { class: "empty" }, "Aucune vidéo pour le moment.", h("br"), "Appuyez sur + pour publier la première !"));
+      return;
+    }
+    snap.forEach(d => box.append(card(d.id, d.data())));
+    box.querySelectorAll("video").forEach(v => io.observe(v));
+  } catch (e) {
+    box.replaceChildren(h("div", { class: "empty" }, "Impossible de charger les vidéos : " + msg(e)));
+  }
+}
+
+function card(id, p) {
+  const v = h("video", { playsinline: "", loop: "", preload: "metadata", src: p.videoUrl });
+  v.muted = true;
+  const hint = h("div", { class: "hint" }, "Touchez pour activer le son");
+  const flash = t => { hint.textContent = t; hint.style.opacity = 1; setTimeout(() => hint.style.opacity = 0, 1300); };
+  v.onerror = () => flash("Vidéo introuvable (lien invalide)");
+  const tap = h("div", { class: "tap", onclick: () => { v.muted = !v.muted; flash(v.muted ? "Son coupé" : "Son activé"); } });
+
+  let liked = false, likes = p.likes || 0, busy = false;
+  const likeN = h("span", {}, String(likes));
+  const likeB = h("button", { class: "act", onclick: async () => {
+    if (busy) return; busy = true;
+    try {
+      const pr = doc(db, "posts", id), lr = doc(db, "posts", id, "likes", me.uid);
+      if (liked) { await deleteDoc(lr); await updateDoc(pr, { likes: increment(-1) }); liked = false; likes--; }
+      else { await setDoc(lr, { uid: me.uid, createdAt: serverTimestamp() }); await updateDoc(pr, { likes: increment(1) }); liked = true; likes++; }
+      likeN.textContent = String(likes); likeB.classList.toggle("on", liked);
+    } catch (e) { toast(msg(e)); }
+    busy = false;
+  } }, "♥", likeN);
+  getDoc(doc(db, "posts", id, "likes", me.uid)).then(s => { if (s.exists()) { liked = true; likeB.classList.add("on"); } }).catch(() => {});
+
+  const comN = h("span", {}, String(p.comments || 0));
+  const comB = h("button", { class: "act", onclick: () => openComments(id, comN) }, "💬", comN);
+  const shB = h("button", { class: "act", onclick: async () => {
+    const data = { title: "MA VIE", text: (p.desc || "Une vidéo sur MA VIE"), url: location.href };
+    try {
+      if (navigator.share) await navigator.share(data);
+      else { await navigator.clipboard.writeText(location.href); toast("Lien copié"); }
+    } catch (e) {}
+  } }, "↗", h("span", {}, "Partager"));
+
+  let fbtn = null;
+  if (p.uid && p.uid !== me.uid) {
+    let on = false;
+    const fid = me.uid + "_" + p.uid;
+    fbtn = h("button", { class: "follow" }, "Suivre");
+    fbtn.onclick = async () => {
+      try {
+        if (on) { await deleteDoc(doc(db, "follows", fid)); on = false; }
+        else { await setDoc(doc(db, "follows", fid), { follower: me.uid, following: p.uid, createdAt: serverTimestamp() }); on = true; }
+        fbtn.textContent = on ? "Abonné" : "Suivre"; fbtn.classList.toggle("on", on);
+      } catch (e) { toast(msg(e)); }
+    };
+    getDoc(doc(db, "follows", fid)).then(s => { if (s.exists()) { on = true; fbtn.textContent = "Abonné"; fbtn.classList.add("on"); } }).catch(() => {});
+  }
+
+  return h("div", { class: "card" }, v, tap, hint,
+    h("div", { class: "info" },
+      h("div", {}, h("b", {}, "@" + (p.username || "anonyme")), fbtn),
+      p.presenter ? h("p", {}, "Présenté par " + p.presenter) : null,
+      p.desc ? h("p", {}, p.desc) : null,
+      p.music ? h("div", { class: "mus" }, "♪ " + p.music) : null),
+    h("div", { class: "side" }, likeB, comB, shB));
+}
+
+// ---------- Commentaires ----------
+let curPost = null, curCount = null;
+async function openComments(id, countEl) {
+  curPost = id; curCount = countEl;
+  $("#shCom").classList.add("on");
+  const list = $("#cList");
+  list.replaceChildren(h("div", { class: "cm" }, "Chargement…"));
+  try {
+    const s = await getDocs(query(collection(db, "posts", id, "comments"), orderBy("createdAt", "asc"), limit(100)));
+    list.replaceChildren();
+    if (s.empty) list.append(h("div", { class: "cm" }, "Pas encore de commentaire."));
+    s.forEach(d => { const c = d.data(); list.append(h("div", { class: "cm" }, h("b", {}, "@" + (c.username || "anonyme") + " : "), c.text)); });
+  } catch (e) { list.replaceChildren(h("div", { class: "cm" }, msg(e))); }
+}
+$("#cClose").onclick = () => $("#shCom").classList.remove("on");
+$("#cGo").onclick = async () => {
+  const t = $("#cText").value.trim();
+  if (!t || !curPost) return;
+  try {
+    await addDoc(collection(db, "posts", curPost, "comments"), { uid: me.uid, username: me.displayName || "anonyme", text: t.slice(0, 500), createdAt: serverTimestamp() });
+    await updateDoc(doc(db, "posts", curPost), { comments: increment(1) });
+    curCount.textContent = String((parseInt(curCount.textContent) || 0) + 1);
+    $("#cText").value = "";
+    openComments(curPost, curCount);
+  } catch (e) { toast(msg(e)); }
+};
+
+// ---------- Publier ----------
+$("#pGo").onclick = async () => {
+  const url = $("#pUrl").value.trim();
+  $("#pErr").textContent = "";
+  if (!/^https?:\/\//i.test(url)) { $("#pErr").textContent = "Collez un lien de vidéo qui commence par https://"; return; }
+  $("#pGo").disabled = true;
+  try {
+    await addDoc(collection(db, "posts"), {
+      uid: me.uid, username: me.displayName || "anonyme", videoUrl: url,
+      presenter: $("#pPres").value.trim().slice(0, 60),
+      desc: $("#pDesc").value.trim().slice(0, 300),
+      music: $("#pMus").value.trim().slice(0, 100),
+      likes: 0, comments: 0, createdAt: serverTimestamp()
+    });
+    ["#pUrl", "#pPres", "#pDesc", "#pMus"].forEach(s => $(s).value = "");
+    $("#shPub").classList.remove("on");
+    toast("Vidéo publiée !");
+    goTab("home");
+  } catch (e) { $("#pErr").textContent = msg(e); }
+  $("#pGo").disabled = false;
+};
+
+// ---------- Profil ----------
+function resizePhoto(file) {
+  return new Promise((resolve, reject) => {
+    const url = URL.createObjectURL(file);
+    const img = new Image();
+    img.onload = () => {
+      const S = 256;
+      const c = document.createElement("canvas");
+      c.width = S; c.height = S;
+      const side = Math.min(img.width, img.height);
+      const sx = (img.width - side) / 2, sy = (img.height - side) / 2;
+      c.getContext("2d").drawImage(img, sx, sy, side, side, 0, 0, S, S);
+      URL.revokeObjectURL(url);
+      resolve(c.toDataURL("image/jpeg", 0.8));
+    };
+    img.onerror = () => { URL.revokeObjectURL(url); reject(new Error("Impossible de lire cette image.")); };
+    img.src = url;
+  });
+}
+async function loadProfile() {
+  const box = $("#profile");
+  box.replaceChildren(h("div", { class: "empty" }, "Chargement…"));
+  try {
+    const uid = me.uid;
+    const [u, posts, fers, fing] = await Promise.all([
+      getDoc(doc(db, "users", uid)),
+      getDocs(query(collection(db, "posts"), where("uid", "==", uid))),
+      getDocs(query(collection(db, "follows"), where("following", "==", uid))),
+      getDocs(query(collection(db, "follows"), where("follower", "==", uid)))
+    ]);
+    const ud = u.exists() ? u.data() : {};
+    const name = ud.username || me.displayName || "utilisateur";
+    const av = h("div", { class: "av" }, ud.photoURL ? h("img", { src: ud.photoURL, alt: "" }) : name[0].toUpperCase());
+    const fileIn = h("input", { type: "file", accept: "image/*", style: "display:none" });
+    fileIn.onchange = async () => {
+      const f = fileIn.files && fileIn.files[0];
+      if (!f) return;
+      if (!f.type.startsWith("image/")) { toast("Choisissez une image."); return; }
+      toast("Envoi de la photo…");
+      try {
+        const data = await resizePhoto(f);
+        await setDoc(doc(db, "users", uid), { username: name, photoURL: data }, { merge: true });
+        toast("Photo enregistrée !");
+        loadProfile();
+      } catch (e) { toast(msg(e)); }
+    };
+    const savePhoto = h("button", { class: "btn ghost", onclick: () => fileIn.click() }, "Choisir une photo dans mon téléphone");
+    const mine = posts.docs.map(d => ({ id: d.id, ...d.data() })).sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0));
+    box.replaceChildren(
+      av, h("div", { class: "logo", style: "font-size:20px;letter-spacing:1px" }, "@" + name),
+      h("div", { class: "stats" },
+        h("div", {}, h("b", {}, String(posts.size)), h("small", {}, "Vidéos")),
+        h("div", {}, h("b", {}, String(fers.size)), h("small", {}, "Abonnés")),
+        h("div", {}, h("b", {}, String(fing.size)), h("small", {}, "Abonnements"))),
+      fileIn, savePhoto,
+      h("div", { style: "height:16px" }),
+      h("b", {}, "Mes vidéos"),
+      mine.length ? mine.map(p => h("div", { class: "pp" },
+        h("span", {}, (p.desc || p.videoUrl || "Vidéo").slice(0, 50)),
+        h("button", { onclick: async () => {
+          if (!confirm("Supprimer cette vidéo ?")) return;
+          try { await deleteDoc(doc(db, "posts", p.id)); loadProfile(); } catch (e) { toast(msg(e)); }
+        } }, "Supprimer"))) : h("p", { style: "color:#888;margin-top:8px;font-size:14px" }, "Vous n'avez rien publié pour le moment."),
+      h("div", { style: "height:20px" }),
+      h("button", { class: "btn ghost", onclick: () => signOut(auth) }, "Se déconnecter"),
+      h("div", { style: "height:30px" }));
+  } catch (e) {
+    box.replaceChildren(h("div", { class: "empty" }, "Impossible de charger le profil : " + msg(e)));
+  }
+}
+</script>
+</body>
+</html>
