@@ -21,6 +21,7 @@ textarea{resize:none;height:80px}
 .btn.ghost{background:transparent;color:#fff;border:1px solid #444}
 .link{background:none;border:0;color:#aaa;text-decoration:underline;padding:6px;cursor:pointer;font-size:14px}
 .err{color:#ff6b6b;font-size:14px;min-height:18px;text-align:center}
+.prog{color:#aaa;font-size:14px;min-height:18px;text-align:center}
 #main{flex:1;position:relative;min-height:0}
 .tab{display:none;position:absolute;inset:0}
 .tab.on{display:block}
@@ -90,7 +91,10 @@ nav .plus{color:#000;background:#fff;flex:0 0 56px;margin:6px 0;border-radius:10
 <div class="sheet" id="shPub">
   <div class="panel">
     <h3>Publier une vidéo</h3>
-    <input id="pUrl" placeholder="Lien de la vidéo (finit par .mp4)" inputmode="url">
+    <input id="pFile" type="file" accept="video/*" style="display:none">
+    <button class="btn ghost" id="pPick">Choisir une vidéo du téléphone</button>
+    <div class="prog" id="pProg"></div>
+    <input id="pUrl" placeholder="Ou collez un lien de vidéo (.mp4)" inputmode="url">
     <input id="pPres" placeholder="Présentateur">
     <textarea id="pDesc" placeholder="Description avec #hashtags"></textarea>
     <input id="pMus" placeholder="Musique (ex : Artiste - Titre)">
@@ -125,6 +129,9 @@ const firebaseConfig = {
   messagingSenderId: "235933753646",
   appId: "1:235933753646:web:91df8965e68affbf3f9abf"
 };
+
+const CLOUD_NAME = "gevaxyli";
+const UPLOAD_PRESET = "mavie_videos";
 
 const $ = s => document.querySelector(s);
 function h(tag, props = {}, ...kids) {
@@ -221,7 +228,7 @@ function goTab(t) {
 }
 $("#nHome").onclick = () => goTab("home");
 $("#nProfile").onclick = () => goTab("profile");
-$("#nPlus").onclick = () => { $("#pErr").textContent = ""; $("#shPub").classList.add("on"); };
+$("#nPlus").onclick = () => { $("#pErr").textContent = ""; $("#pProg").textContent = ""; $("#shPub").classList.add("on"); };
 $("#pCancel").onclick = () => $("#shPub").classList.remove("on");
 
 // ---------- Fil de vidéos ----------
@@ -334,11 +341,57 @@ $("#cGo").onclick = async () => {
   } catch (e) { toast(msg(e)); }
 };
 
+// ---------- Envoyer une vidéo depuis le téléphone (Cloudinary) ----------
+let uploading = false;
+$("#pPick").onclick = () => $("#pFile").click();
+$("#pFile").onchange = () => {
+  const f = $("#pFile").files && $("#pFile").files[0];
+  if (!f) return;
+  $("#pErr").textContent = "";
+  if (f.size > 100 * 1024 * 1024) {
+    $("#pErr").textContent = "Vidéo trop lourde (100 Mo maximum).";
+    $("#pFile").value = "";
+    return;
+  }
+  const fd = new FormData();
+  fd.append("file", f);
+  fd.append("upload_preset", UPLOAD_PRESET);
+  const xhr = new XMLHttpRequest();
+  xhr.open("POST", "https://api.cloudinary.com/v1_1/" + CLOUD_NAME + "/video/upload");
+  uploading = true;
+  $("#pGo").disabled = true;
+  $("#pPick").disabled = true;
+  $("#pProg").textContent = "Envoi en cours : 0 %";
+  xhr.upload.onprogress = ev => {
+    if (ev.lengthComputable) $("#pProg").textContent = "Envoi en cours : " + Math.round(ev.loaded / ev.total * 100) + " %";
+  };
+  const done = () => { uploading = false; $("#pGo").disabled = false; $("#pPick").disabled = false; $("#pFile").value = ""; };
+  xhr.onload = () => {
+    let r = {};
+    try { r = JSON.parse(xhr.responseText); } catch (e) {}
+    if (xhr.status >= 200 && xhr.status < 300 && r.secure_url) {
+      $("#pUrl").value = r.secure_url;
+      $("#pProg").textContent = "Vidéo envoyée. Appuyez sur Publier.";
+    } else {
+      $("#pProg").textContent = "";
+      $("#pErr").textContent = "Envoi impossible : " + ((r.error && r.error.message) || "erreur " + xhr.status);
+    }
+    done();
+  };
+  xhr.onerror = () => {
+    $("#pProg").textContent = "";
+    $("#pErr").textContent = "Envoi impossible : pas de connexion internet.";
+    done();
+  };
+  xhr.send(fd);
+};
+
 // ---------- Publier ----------
 $("#pGo").onclick = async () => {
+  if (uploading) return;
   const url = $("#pUrl").value.trim();
   $("#pErr").textContent = "";
-  if (!/^https?:\/\//i.test(url)) { $("#pErr").textContent = "Collez un lien de vidéo qui commence par https://"; return; }
+  if (!/^https?:\/\//i.test(url)) { $("#pErr").textContent = "Choisissez une vidéo du téléphone, ou collez un lien qui commence par https://"; return; }
   $("#pGo").disabled = true;
   try {
     await addDoc(collection(db, "posts"), {
@@ -349,6 +402,7 @@ $("#pGo").onclick = async () => {
       likes: 0, comments: 0, createdAt: serverTimestamp()
     });
     ["#pUrl", "#pPres", "#pDesc", "#pMus"].forEach(s => $(s).value = "");
+    $("#pProg").textContent = "";
     $("#shPub").classList.remove("on");
     toast("Vidéo publiée !");
     goTab("home");
