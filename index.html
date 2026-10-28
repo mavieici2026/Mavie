@@ -356,6 +356,25 @@ $("#pGo").onclick = async () => {
   $("#pGo").disabled = false;
 };
 
+// ---------- Photo de profil : réduire l'image de la galerie ----------
+function resizeImage(file, size) {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    const url = URL.createObjectURL(file);
+    img.onload = () => {
+      const s = Math.min(img.width, img.height);
+      const sx = (img.width - s) / 2, sy = (img.height - s) / 2;
+      const c = document.createElement("canvas");
+      c.width = size; c.height = size;
+      c.getContext("2d").drawImage(img, sx, sy, s, s, 0, 0, size, size);
+      URL.revokeObjectURL(url);
+      resolve(c.toDataURL("image/jpeg", 0.8));
+    };
+    img.onerror = () => { URL.revokeObjectURL(url); reject(new Error("Photo illisible. Essayez une autre image.")); };
+    img.src = url;
+  });
+}
+
 // ---------- Profil ----------
 async function loadProfile() {
   const box = $("#profile");
@@ -371,13 +390,19 @@ async function loadProfile() {
     const ud = u.exists() ? u.data() : {};
     const name = ud.username || me.displayName || "utilisateur";
     const av = h("div", { class: "av" }, ud.photoURL ? h("img", { src: ud.photoURL, alt: "" }) : name[0].toUpperCase());
-    const photo = h("input", { placeholder: "Lien de votre photo de profil (https://…)", inputmode: "url" });
-    const savePhoto = h("button", { class: "btn ghost", onclick: async () => {
-      const p = photo.value.trim();
-      if (!/^https?:\/\//i.test(p)) { toast("Collez un lien qui commence par https://"); return; }
-      try { await setDoc(doc(db, "users", uid), { username: name, photoURL: p }, { merge: true }); toast("Photo enregistrée"); loadProfile(); }
-      catch (e) { toast(msg(e)); }
-    } }, "Changer la photo");
+    const file = h("input", { type: "file", accept: "image/*", style: "display:none" });
+    file.onchange = async () => {
+      const f = file.files && file.files[0];
+      if (!f) return;
+      try {
+        toast("Envoi de la photo…");
+        const data = await resizeImage(f, 256);
+        await setDoc(doc(db, "users", uid), { username: name, photoURL: data }, { merge: true });
+        toast("Photo enregistrée");
+        loadProfile();
+      } catch (e) { toast(msg(e)); }
+    };
+    const pickPhoto = h("button", { class: "btn ghost", onclick: () => file.click() }, "Choisir une photo");
     const mine = posts.docs.map(d => ({ id: d.id, ...d.data() })).sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0));
     box.replaceChildren(
       av, h("div", { class: "logo", style: "font-size:20px;letter-spacing:1px" }, "@" + name),
@@ -385,7 +410,7 @@ async function loadProfile() {
         h("div", {}, h("b", {}, String(posts.size)), h("small", {}, "Vidéos")),
         h("div", {}, h("b", {}, String(fers.size)), h("small", {}, "Abonnés")),
         h("div", {}, h("b", {}, String(fing.size)), h("small", {}, "Abonnements"))),
-      photo, h("div", { style: "height:8px" }), savePhoto,
+      file, pickPhoto,
       h("div", { style: "height:16px" }),
       h("b", {}, "Mes vidéos"),
       mine.length ? mine.map(p => h("div", { class: "pp" },
