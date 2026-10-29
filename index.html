@@ -25,11 +25,14 @@ textarea{resize:none;height:80px}
 #main{flex:1;position:relative;min-height:0}
 .tab{display:none;position:absolute;inset:0}
 .tab.on{display:block}
+#topbar{position:absolute;top:0;left:0;right:0;display:flex;justify-content:center;gap:24px;padding:10px 12px 18px;z-index:5;background:linear-gradient(rgba(0,0,0,.75),rgba(0,0,0,0));pointer-events:none}
+#topbar button{pointer-events:auto;background:none;border:0;border-bottom:2px solid transparent;color:#aaa;font-weight:700;font-size:16px;padding:6px 4px;cursor:pointer;text-shadow:0 1px 4px #000}
+#topbar button.on{color:#fff;border-bottom-color:#fff}
 #feed{height:100%;overflow-y:scroll;scroll-snap-type:y mandatory}
 .card{position:relative;height:100%;scroll-snap-align:start;scroll-snap-stop:always;background:#000;overflow:hidden}
 .card video{width:100%;height:100%;object-fit:contain;background:#000}
 .tap{position:absolute;inset:0 70px 120px 0}
-.hint{position:absolute;top:14px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,.7);padding:6px 12px;border-radius:20px;font-size:13px;opacity:0;transition:opacity .3s;pointer-events:none;white-space:nowrap}
+.hint{position:absolute;top:62px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,.7);padding:6px 12px;border-radius:20px;font-size:13px;opacity:0;transition:opacity .3s;pointer-events:none;white-space:nowrap}
 .info{position:absolute;left:14px;right:80px;bottom:18px;text-shadow:0 1px 4px #000;pointer-events:none}
 .info b{font-size:16px}
 .info p{font-size:14px;margin-top:4px;word-wrap:break-word}
@@ -79,7 +82,13 @@ nav .plus{color:#000;background:#fff;flex:0 0 56px;margin:6px 0;border-radius:10
 
 <section id="app" class="screen">
   <div id="main">
-    <div id="tabHome" class="tab on"><div id="feed"></div></div>
+    <div id="tabHome" class="tab on">
+      <div id="topbar">
+        <button id="fAll" class="on">Pour toi</button>
+        <button id="fFol">Abonnements</button>
+      </div>
+      <div id="feed"></div>
+    </div>
     <div id="tabProfile" class="tab"><div id="profile"></div></div>
   </div>
   <nav>
@@ -242,19 +251,59 @@ const io = new IntersectionObserver(es => {
 }, { threshold: [0, 0.7, 1] });
 function pauseAll() { document.querySelectorAll("video").forEach(v => v.pause()); }
 
+// "all" = Pour toi, "fol" = Abonnements
+let feedMode = "all";
+let feedToken = 0;
+
+function setFeed(m) {
+  feedMode = m;
+  $("#fAll").classList.toggle("on", m === "all");
+  $("#fFol").classList.toggle("on", m === "fol");
+  loadFeed();
+}
+$("#fAll").onclick = () => setFeed("all");
+$("#fFol").onclick = () => setFeed("fol");
+
+async function fetchPosts() {
+  if (feedMode === "all") {
+    const snap = await getDocs(query(collection(db, "posts"), orderBy("createdAt", "desc"), limit(30)));
+    return snap.docs.map(d => ({ id: d.id, data: d.data() }));
+  }
+  const f = await getDocs(query(collection(db, "follows"), where("follower", "==", me.uid)));
+  const ids = f.docs.map(d => d.data().following).filter(Boolean);
+  if (!ids.length) return null;
+  const all = [];
+  for (let i = 0; i < ids.length; i += 10) {
+    const s = await getDocs(query(collection(db, "posts"), where("uid", "in", ids.slice(i, i + 10))));
+    s.forEach(d => all.push({ id: d.id, data: d.data() }));
+  }
+  all.sort((a, b) => (b.data.createdAt?.seconds || 0) - (a.data.createdAt?.seconds || 0));
+  return all.slice(0, 30);
+}
+
 async function loadFeed() {
+  const my = ++feedToken;
   const box = $("#feed");
+  pauseAll();
   box.replaceChildren(h("div", { class: "empty" }, "Chargement…"));
   try {
-    const snap = await getDocs(query(collection(db, "posts"), orderBy("createdAt", "desc"), limit(30)));
+    const items = await fetchPosts();
+    if (my !== feedToken) return;
     box.replaceChildren();
-    if (snap.empty) {
-      box.append(h("div", { class: "empty" }, "Aucune vidéo pour le moment.", h("br"), "Appuyez sur + pour publier la première !"));
+    if (items === null) {
+      box.append(h("div", { class: "empty" }, "Vous ne suivez encore personne.", h("br"), "Dans « Pour toi », appuyez sur « Suivre » à côté du nom d'un créateur."));
       return;
     }
-    snap.forEach(d => box.append(card(d.id, d.data())));
+    if (!items.length) {
+      box.append(feedMode === "fol"
+        ? h("div", { class: "empty" }, "Les créateurs que vous suivez n'ont encore rien publié.")
+        : h("div", { class: "empty" }, "Aucune vidéo pour le moment.", h("br"), "Appuyez sur + pour publier la première !"));
+      return;
+    }
+    items.forEach(it => box.append(card(it.id, it.data)));
     box.querySelectorAll("video").forEach(v => io.observe(v));
   } catch (e) {
+    if (my !== feedToken) return;
     box.replaceChildren(h("div", { class: "empty" }, "Impossible de charger les vidéos : " + msg(e)));
   }
 }
