@@ -70,6 +70,10 @@ nav .plus{color:#000;background:#fff;flex:0 0 56px;margin:6px 0;border-radius:10
 .pp{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:12px;background:#111;border-radius:10px;margin-top:8px;font-size:14px}
 .pp span{flex:1;min-width:0;overflow:hidden;overflow-wrap:anywhere;word-break:break-all}
 .pp button{flex-shrink:0;white-space:nowrap;background:none;border:1px solid #444;border-radius:8px;padding:6px 10px;cursor:pointer;font-size:13px}
+#search{height:100%;overflow-y:auto;overflow-x:hidden;padding:16px}
+.res{display:flex;align-items:center;gap:12px;padding:10px;background:#111;border-radius:10px;margin-top:8px;cursor:pointer}
+.res .mini{width:44px;height:44px;border-radius:50%;background:#222;border:1px solid #444;display:flex;align-items:center;justify-content:center;font-weight:800;flex-shrink:0}
+.res span{min-width:0;overflow-wrap:anywhere}
 .gain{border:1px solid #333;background:#111;border-radius:14px;padding:16px;margin:6px 0 14px;text-align:center}
 .gain small{display:block;color:#aaa;line-height:1.5}
 .gain .amt{font-size:28px;font-weight:800;margin:6px 0}
@@ -100,10 +104,12 @@ nav .plus{color:#000;background:#fff;flex:0 0 56px;margin:6px 0;border-radius:10
       </div>
       <div id="feed"></div>
     </div>
+    <div id="tabSearch" class="tab"><div id="search"></div></div>
     <div id="tabProfile" class="tab"><div id="profile"></div></div>
   </div>
   <nav>
     <button id="nHome" class="on">Accueil</button>
+    <button id="nSearch">Recherche</button>
     <button id="nPlus" class="plus">+</button>
     <button id="nProfile">Profil</button>
   </nav>
@@ -274,11 +280,16 @@ function showApp() {
 // ---------- Onglets ----------
 function goTab(t) {
   $("#tabHome").classList.toggle("on", t === "home");
+  $("#tabSearch").classList.toggle("on", t === "search");
   $("#tabProfile").classList.toggle("on", t === "profile");
   $("#nHome").classList.toggle("on", t === "home");
+  $("#nSearch").classList.toggle("on", t === "search");
   $("#nProfile").classList.toggle("on", t === "profile");
-  if (t === "home") loadFeed(); else { pauseAll(); loadProfile(); }
+  if (t === "home") loadFeed();
+  else if (t === "search") { pauseAll(); loadSearch(); }
+  else { pauseAll(); loadProfile(); }
 }
+$("#nSearch").onclick = () => goTab("search");
 $("#nHome").onclick = () => goTab("home");
 $("#nProfile").onclick = () => goTab("profile");
 $("#nPlus").onclick = () => { $("#pErr").textContent = ""; $("#pProg").textContent = ""; $("#shPub").classList.add("on"); };
@@ -598,6 +609,46 @@ function resizeImage(file, size) {
     img.onerror = () => { URL.revokeObjectURL(url); reject(new Error("Photo illisible. Essayez une autre image.")); };
     img.src = url;
   });
+}
+
+// ---------- Recherche (créateurs, mots, #hashtags) ----------
+const norm = s => (s || "").toString().toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "");
+async function loadSearch() {
+  const box = $("#search");
+  const input = h("input", { type: "search", placeholder: "Créateur, mot ou #hashtag", autocomplete: "off" });
+  const out = h("div", {});
+  box.replaceChildren(input, out);
+  out.replaceChildren(h("p", { class: "prog" }, "Chargement…"));
+  let all = [];
+  try {
+    const snap = await getDocs(query(collection(db, "posts"), orderBy("createdAt", "desc"), limit(200)));
+    all = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+  } catch (e) { out.replaceChildren(h("p", { class: "err" }, "Impossible de charger : " + msg(e))); return; }
+  const show = () => {
+    const q = norm(input.value.trim().replace(/^#/, ""));
+    if (q.length < 2) { out.replaceChildren(h("p", { class: "prog" }, "Écrivez au moins 2 lettres.")); return; }
+    const hits = all.filter(p => [p.username, p.desc, p.presenter, p.music].some(x => norm(x).includes(q)));
+    const people = [], seen = new Set();
+    all.forEach(p => {
+      if (p.uid && !seen.has(p.uid) && norm(p.username).includes(q)) { seen.add(p.uid); people.push(p); }
+    });
+    const kids = [];
+    if (people.length) {
+      kids.push(h("b", { style: "display:block;margin-top:14px" }, "Créateurs"));
+      people.forEach(p => kids.push(h("div", { class: "res", onclick: () => openUser(p.uid, p.username) },
+        h("div", { class: "mini" }, (p.username || "?")[0].toUpperCase()),
+        h("span", {}, "@" + (p.username || "anonyme")))));
+    }
+    if (hits.length) {
+      kids.push(h("b", { style: "display:block;margin-top:14px" }, "Vidéos"));
+      kids.push(h("div", { class: "grid" }, hits.map(p => h("div", { class: "tile", onclick: () => playVideo(p.videoUrl) },
+        h("video", { src: p.videoUrl + "#t=0.5", muted: "", playsinline: "", preload: "metadata" })))));
+    }
+    if (!kids.length) kids.push(h("p", { class: "prog" }, "Aucun résultat."));
+    out.replaceChildren(...kids);
+  };
+  input.oninput = show;
+  show();
 }
 
 // ---------- Modifier mon profil ----------
