@@ -149,6 +149,17 @@ nav .plus{color:#000;background:#fff;flex:0 0 56px;margin:6px 0;border-radius:10
   </div>
 </div>
 
+<div class="sheet" id="shEdit">
+  <div class="panel">
+    <h3>Modifier mon profil</h3>
+    <input id="eName" placeholder="Nom d'utilisateur" maxlength="30">
+    <textarea id="eBio" placeholder="Description (150 caractères maximum)" maxlength="150"></textarea>
+    <div class="err" id="eErr"></div>
+    <button class="btn" id="eGo">Enregistrer</button>
+    <button class="btn ghost" id="eCancel">Annuler</button>
+  </div>
+</div>
+
 <div id="toast"></div>
 
 <script type="module">
@@ -399,6 +410,7 @@ async function openUser(uid, fallbackName) {
     box.replaceChildren(
       av,
       h("div", { class: "logo", style: "font-size:20px;letter-spacing:1px" }, "@" + name),
+      ...(ud.bio ? [bioEl(ud.bio)] : []),
       h("div", { class: "stats" },
         h("div", {}, h("b", {}, String(posts.size)), h("small", {}, "Vidéos")),
         h("div", {}, ferN, h("small", {}, "Abonnés")),
@@ -588,6 +600,32 @@ function resizeImage(file, size) {
   });
 }
 
+// ---------- Modifier mon profil ----------
+function bioEl(t) {
+  return h("p", { style: "text-align:center;color:#ccc;font-size:14px;margin:4px 0 8px;word-wrap:break-word;overflow-wrap:anywhere" }, t);
+}
+$("#eCancel").onclick = () => $("#shEdit").classList.remove("on");
+$("#eGo").onclick = async () => {
+  const name = $("#eName").value.trim();
+  const bio = $("#eBio").value.trim().slice(0, 150);
+  $("#eErr").textContent = "";
+  if (name.length < 3) { $("#eErr").textContent = "Nom d'utilisateur : 3 caractères minimum."; return; }
+  $("#eGo").disabled = true;
+  try {
+    await updateProfile(auth.currentUser, { displayName: name });
+    await setDoc(doc(db, "users", me.uid), { username: name, bio }, { merge: true });
+    // met à jour le nom sur les anciennes vidéos
+    try {
+      const s = await getDocs(query(collection(db, "posts"), where("uid", "==", me.uid)));
+      await Promise.all(s.docs.map(d => updateDoc(d.ref, { username: name })));
+    } catch (e) {}
+    $("#shEdit").classList.remove("on");
+    toast("Profil enregistré");
+    loadProfile();
+  } catch (e) { $("#eErr").textContent = msg(e); }
+  $("#eGo").disabled = false;
+};
+
 // ---------- Solde et gains (estimation) ----------
 function gainBox(totalViews) {
   const gain = totalViews * RATE_PER_1000 / 1000;
@@ -628,6 +666,10 @@ async function loadProfile() {
       } catch (e) { toast(msg(e)); }
     };
     const pickPhoto = h("button", { class: "btn ghost", onclick: () => file.click() }, "Choisir une photo");
+    const editBtn = h("button", { class: "btn ghost", style: "margin-top:10px", onclick: () => {
+      $("#eName").value = name; $("#eBio").value = ud.bio || ""; $("#eErr").textContent = "";
+      $("#shEdit").classList.add("on");
+    } }, "Modifier mon profil");
     const mine = posts.docs.map(d => ({ id: d.id, ...d.data() })).sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0));
     const list = h("div", {},
       mine.length ? mine.map(p => h("div", { class: "pp" },
@@ -638,13 +680,14 @@ async function loadProfile() {
         } }, "Supprimer"))) : h("p", { style: "color:#888;margin-top:8px;font-size:14px" }, "Vous n'avez rien publié pour le moment."));
     box.replaceChildren(
       av, h("div", { class: "logo", style: "font-size:20px;letter-spacing:1px" }, "@" + name),
+      ...(ud.bio ? [bioEl(ud.bio)] : []),
       h("div", { class: "stats" },
         h("div", {}, h("b", {}, String(posts.size)), h("small", {}, "Vidéos")),
         h("div", {}, h("b", {}, String(mine.reduce((t, p) => t + (p.views || 0), 0))), h("small", {}, "Vues")),
         h("div", {}, h("b", {}, String(fers.size)), h("small", {}, "Abonnés")),
         h("div", {}, h("b", {}, String(fing.size)), h("small", {}, "Abonnements"))),
       gainBox(mine.reduce((t, p) => t + (p.views || 0), 0)),
-      file, pickPhoto,
+      file, pickPhoto, editBtn,
       h("div", { style: "height:16px" }),
       h("b", {}, "Mes vidéos"),
       list,
