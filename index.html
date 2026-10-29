@@ -70,6 +70,10 @@ nav .plus{color:#000;background:#fff;flex:0 0 56px;margin:6px 0;border-radius:10
 .pp{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:12px;background:#111;border-radius:10px;margin-top:8px;font-size:14px}
 .pp span{flex:1;min-width:0;overflow:hidden;overflow-wrap:anywhere;word-break:break-all}
 .pp button{flex-shrink:0;white-space:nowrap;background:none;border:1px solid #444;border-radius:8px;padding:6px 10px;cursor:pointer;font-size:13px}
+.gain{border:1px solid #333;background:#111;border-radius:14px;padding:16px;margin:6px 0 14px;text-align:center}
+.gain small{display:block;color:#aaa;line-height:1.5}
+.gain .amt{font-size:28px;font-weight:800;margin:6px 0}
+.gain .btn{margin-top:10px;opacity:.45}
 #toast{position:fixed;left:50%;bottom:90px;transform:translateX(-50%);background:#fff;color:#000;padding:10px 16px;border-radius:20px;font-size:14px;z-index:200;max-width:90%;text-align:center;display:none}
 </style>
 </head>
@@ -166,6 +170,10 @@ const UPLOAD_PRESET = "mavie_videos";
 // Pour tester avec un seul compte, on compte aussi ses propres vues.
 // À mettre sur false avant de mettre en place les paiements.
 const COUNT_OWN_VIEWS = true;
+// Gains : calcul de TEST (estimation affichée seulement, aucun vrai paiement).
+// 100 FCFA pour 1 000 vues est une valeur inventée, à changer plus tard.
+const RATE_PER_1000 = 100;
+const fcfa = n => (Math.round(n * 100) / 100).toLocaleString("fr-FR", { maximumFractionDigits: 2 }) + " FCFA";
 
 const $ = s => document.querySelector(s);
 function h(tag, props = {}, ...kids) {
@@ -580,6 +588,18 @@ function resizeImage(file, size) {
   });
 }
 
+// ---------- Solde et gains (estimation) ----------
+function gainBox(totalViews) {
+  const gain = totalViews * RATE_PER_1000 / 1000;
+  const b = h("button", { class: "btn ghost", onclick: () => toast("Les retraits ne sont pas encore disponibles.") }, "Retirer mes gains (bientôt)");
+  return h("div", { class: "gain" },
+    h("b", {}, "Mes gains (estimation)"),
+    h("div", { class: "amt" }, fcfa(gain)),
+    h("small", {}, totalViews + " vues au total. Calcul de test : " + fcfa(RATE_PER_1000) + " pour 1 000 vues."),
+    h("small", {}, "Aucun vrai paiement pour le moment."),
+    b);
+}
+
 // ---------- Profil ----------
 async function loadProfile() {
   const box = $("#profile");
@@ -611,7 +631,7 @@ async function loadProfile() {
     const mine = posts.docs.map(d => ({ id: d.id, ...d.data() })).sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0));
     const list = h("div", {},
       mine.length ? mine.map(p => h("div", { class: "pp" },
-        h("span", {}, (p.desc || p.videoUrl || "Vidéo").slice(0, 50), h("br"), h("small", { style: "color:#888" }, "👁 " + (p.views || 0) + " vues")),
+        h("span", {}, (p.desc || p.videoUrl || "Vidéo").slice(0, 50), h("br"), h("small", { style: "color:#888" }, "👁 " + (p.views || 0) + " vues · ≈ " + fcfa((p.views || 0) * RATE_PER_1000 / 1000))),
         h("button", { onclick: async () => {
           if (!confirm("Supprimer cette vidéo ?")) return;
           try { await deleteDoc(doc(db, "posts", p.id)); loadProfile(); } catch (e) { toast(msg(e)); }
@@ -623,6 +643,7 @@ async function loadProfile() {
         h("div", {}, h("b", {}, String(mine.reduce((t, p) => t + (p.views || 0), 0))), h("small", {}, "Vues")),
         h("div", {}, h("b", {}, String(fers.size)), h("small", {}, "Abonnés")),
         h("div", {}, h("b", {}, String(fing.size)), h("small", {}, "Abonnements"))),
+      gainBox(mine.reduce((t, p) => t + (p.views || 0), 0)),
       file, pickPhoto,
       h("div", { style: "height:16px" }),
       h("b", {}, "Mes vidéos"),
