@@ -64,7 +64,7 @@ nav .plus{color:#000;background:#fff;flex:0 0 56px;margin:6px 0;border-radius:10
 #profile{overflow-y:auto;overflow-x:hidden;padding:20px}
 .av{width:90px;height:90px;border-radius:50%;background:#222;display:flex;align-items:center;justify-content:center;font-size:38px;font-weight:800;margin:0 auto 10px;overflow:hidden;border:2px solid #fff}
 .av img{width:100%;height:100%;object-fit:cover}
-.stats{display:flex;justify-content:center;gap:28px;margin:14px 0;text-align:center}
+.stats{display:flex;justify-content:center;gap:18px;margin:14px 0;text-align:center}
 .stats b{display:block;font-size:20px}
 .stats small{color:#aaa}
 .pp{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:12px;background:#111;border-radius:10px;margin-top:8px;font-size:14px}
@@ -163,6 +163,9 @@ const firebaseConfig = {
 
 const CLOUD_NAME = "gevaxyli";
 const UPLOAD_PRESET = "mavie_videos";
+// Pour tester avec un seul compte, on compte aussi ses propres vues.
+// À mettre sur false avant de mettre en place les paiements.
+const COUNT_OWN_VIEWS = true;
 
 const $ = s => document.querySelector(s);
 function h(tag, props = {}, ...kids) {
@@ -266,8 +269,12 @@ $("#pCancel").onclick = () => $("#shPub").classList.remove("on");
 const io = new IntersectionObserver(es => {
   es.forEach(en => {
     const v = en.target;
-    if (en.isIntersecting && en.intersectionRatio > 0.7) v.play().catch(() => {});
-    else v.pause();
+    clearTimeout(v._vt);
+    if (en.isIntersecting && en.intersectionRatio > 0.7) {
+      v.play().catch(() => {});
+      // une vue = la vidéo reste à l'écran 2 secondes
+      if (v._onView) v._vt = setTimeout(v._onView, 2000);
+    } else v.pause();
   });
 }, { threshold: [0, 0.7, 1] });
 function pauseAll() { document.querySelectorAll("video").forEach(v => v.pause()); }
@@ -399,6 +406,24 @@ async function openUser(uid, fallbackName) {
 function card(id, p) {
   const v = h("video", { playsinline: "", loop: "", preload: "metadata", src: p.videoUrl });
   v.muted = true;
+
+  // Compteur de vues (une seule fois par personne et par vidéo, sur cet appareil)
+  let views = p.views || 0;
+  const viewN = h("span", {}, String(views));
+  const viewB = h("div", { class: "act", style: "cursor:default" }, "👁", viewN);
+  v._onView = async () => {
+    if (v._counted) return;
+    v._counted = true;
+    if (!COUNT_OWN_VIEWS && p.uid === me.uid) return;
+    const key = "mv_" + me.uid + "_" + id;
+    try { if (localStorage.getItem(key)) return; } catch (e) {}
+    try {
+      await updateDoc(doc(db, "posts", id), { views: increment(1) });
+      try { localStorage.setItem(key, "1"); } catch (e) {}
+      views++; viewN.textContent = String(views);
+    } catch (e) { toast("Vue non enregistrée : " + msg(e)); }
+  };
+
   const hint = h("div", { class: "hint" }, "Touchez pour activer le son");
   const flash = t => { hint.textContent = t; hint.style.opacity = 1; setTimeout(() => hint.style.opacity = 0, 1300); };
   v.onerror = () => flash("Vidéo introuvable (lien invalide)");
@@ -437,7 +462,7 @@ function card(id, p) {
       p.presenter ? h("p", {}, "Présenté par " + p.presenter) : null,
       p.desc ? h("p", {}, p.desc) : null,
       p.music ? h("div", { class: "mus" }, "♪ " + p.music) : null),
-    h("div", { class: "side" }, likeB, comB, shB));
+    h("div", { class: "side" }, likeB, comB, viewB, shB));
 }
 
 // ---------- Commentaires ----------
@@ -586,7 +611,7 @@ async function loadProfile() {
     const mine = posts.docs.map(d => ({ id: d.id, ...d.data() })).sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0));
     const list = h("div", {},
       mine.length ? mine.map(p => h("div", { class: "pp" },
-        h("span", {}, (p.desc || p.videoUrl || "Vidéo").slice(0, 50)),
+        h("span", {}, (p.desc || p.videoUrl || "Vidéo").slice(0, 50), h("br"), h("small", { style: "color:#888" }, "👁 " + (p.views || 0) + " vues")),
         h("button", { onclick: async () => {
           if (!confirm("Supprimer cette vidéo ?")) return;
           try { await deleteDoc(doc(db, "posts", p.id)); loadProfile(); } catch (e) { toast(msg(e)); }
@@ -595,6 +620,7 @@ async function loadProfile() {
       av, h("div", { class: "logo", style: "font-size:20px;letter-spacing:1px" }, "@" + name),
       h("div", { class: "stats" },
         h("div", {}, h("b", {}, String(posts.size)), h("small", {}, "Vidéos")),
+        h("div", {}, h("b", {}, String(mine.reduce((t, p) => t + (p.views || 0), 0))), h("small", {}, "Vues")),
         h("div", {}, h("b", {}, String(fers.size)), h("small", {}, "Abonnés")),
         h("div", {}, h("b", {}, String(fing.size)), h("small", {}, "Abonnements"))),
       file, pickPhoto,
