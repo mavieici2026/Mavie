@@ -43,6 +43,13 @@ textarea{resize:none;height:80px}
 .act.on{background:#fff;color:#000}
 .follow{background:#fff;color:#000;border:0;border-radius:20px;padding:6px 12px;font-weight:700;font-size:13px;margin-left:8px;cursor:pointer;pointer-events:auto}
 .follow.on{background:transparent;color:#fff;border:1px solid #fff}
+.uname{pointer-events:auto;cursor:pointer;text-decoration:underline;text-underline-offset:3px}
+.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:4px;margin-top:6px}
+.tile{position:relative;aspect-ratio:9/16;background:#222;border-radius:6px;overflow:hidden;cursor:pointer}
+.tile video{width:100%;height:100%;object-fit:cover;pointer-events:none}
+#shView{z-index:60;background:#000;align-items:stretch}
+#shView .vbox{display:flex;flex-direction:column;width:100%;height:100%;padding:10px;gap:10px}
+#shView video{flex:1;min-height:0;width:100%;object-fit:contain;background:#000}
 .empty{height:100%;display:flex;align-items:center;justify-content:center;text-align:center;padding:30px;color:#bbb;line-height:1.6}
 nav{display:flex;border-top:1px solid #222;background:#000;padding-bottom:env(safe-area-inset-bottom)}
 nav button{flex:1;background:none;border:0;padding:14px 0;color:#888;font-weight:600;font-size:14px;cursor:pointer}
@@ -121,6 +128,20 @@ nav .plus{color:#000;background:#fff;flex:0 0 56px;margin:6px 0;border-radius:10
     <input id="cText" placeholder="Écrire un commentaire…">
     <button class="btn" id="cGo">Envoyer</button>
     <button class="btn ghost" id="cClose">Fermer</button>
+  </div>
+</div>
+
+<div class="sheet" id="shUser">
+  <div class="panel">
+    <div id="uBox"></div>
+    <button class="btn ghost" id="uClose">Fermer</button>
+  </div>
+</div>
+
+<div class="sheet" id="shView">
+  <div class="vbox">
+    <video id="vVideo" controls playsinline loop></video>
+    <button class="btn ghost" id="vClose">Fermer la vidéo</button>
   </div>
 </div>
 
@@ -308,6 +329,73 @@ async function loadFeed() {
   }
 }
 
+// Bouton Suivre / Abonné (utilisé dans le fil et sur le profil d'un créateur)
+function makeFollow(targetUid, onChange) {
+  let on = false;
+  const fid = me.uid + "_" + targetUid;
+  const b = h("button", { class: "follow" }, "Suivre");
+  b.onclick = async () => {
+    try {
+      if (on) { await deleteDoc(doc(db, "follows", fid)); on = false; }
+      else { await setDoc(doc(db, "follows", fid), { follower: me.uid, following: targetUid, createdAt: serverTimestamp() }); on = true; }
+      b.textContent = on ? "Abonné" : "Suivre"; b.classList.toggle("on", on);
+      if (onChange) onChange(on);
+    } catch (e) { toast(msg(e)); }
+  };
+  getDoc(doc(db, "follows", fid)).then(s => { if (s.exists()) { on = true; b.textContent = "Abonné"; b.classList.add("on"); } }).catch(() => {});
+  return b;
+}
+
+// ---------- Profil d'un autre créateur ----------
+function playVideo(url) {
+  const v = $("#vVideo");
+  v.src = url;
+  $("#shView").classList.add("on");
+  v.play().catch(() => {});
+}
+$("#vClose").onclick = () => { const v = $("#vVideo"); v.pause(); v.removeAttribute("src"); v.load(); $("#shView").classList.remove("on"); };
+$("#uClose").onclick = () => $("#shUser").classList.remove("on");
+
+async function openUser(uid, fallbackName) {
+  if (uid === me.uid) { goTab("profile"); return; }
+  const box = $("#uBox");
+  $("#shUser").classList.add("on");
+  box.replaceChildren(h("div", { class: "cm" }, "Chargement…"));
+  try {
+    let ud = {};
+    try { const s = await getDoc(doc(db, "users", uid)); if (s.exists()) ud = s.data(); } catch (e) {}
+    const [posts, fers, fing] = await Promise.all([
+      getDocs(query(collection(db, "posts"), where("uid", "==", uid))),
+      getDocs(query(collection(db, "follows"), where("following", "==", uid))),
+      getDocs(query(collection(db, "follows"), where("follower", "==", uid)))
+    ]);
+    const name = ud.username || fallbackName || "utilisateur";
+    const av = h("div", { class: "av" }, ud.photoURL ? h("img", { src: ud.photoURL, alt: "" }) : name[0].toUpperCase());
+    const ferN = h("b", {}, String(fers.size));
+    const fbtn = makeFollow(uid, on => { ferN.textContent = String(Math.max(0, (parseInt(ferN.textContent) || 0) + (on ? 1 : -1))); });
+    fbtn.style.margin = "0 auto";
+    fbtn.style.padding = "10px 24px";
+    fbtn.style.fontSize = "15px";
+    const items = posts.docs.map(d => d.data()).sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0));
+    const grid = items.length
+      ? h("div", { class: "grid" }, items.map(p => h("div", { class: "tile", onclick: () => playVideo(p.videoUrl) },
+          h("video", { src: p.videoUrl + "#t=0.5", muted: "", playsinline: "", preload: "metadata" }))))
+      : h("p", { style: "color:#888;margin-top:8px;font-size:14px;text-align:center" }, "Ce créateur n'a rien publié pour le moment.");
+    box.replaceChildren(
+      av,
+      h("div", { class: "logo", style: "font-size:20px;letter-spacing:1px" }, "@" + name),
+      h("div", { class: "stats" },
+        h("div", {}, h("b", {}, String(posts.size)), h("small", {}, "Vidéos")),
+        h("div", {}, ferN, h("small", {}, "Abonnés")),
+        h("div", {}, h("b", {}, String(fing.size)), h("small", {}, "Abonnements"))),
+      h("div", { style: "display:flex;justify-content:center" }, fbtn),
+      h("b", { style: "margin-top:8px" }, "Ses vidéos"),
+      grid);
+  } catch (e) {
+    box.replaceChildren(h("div", { class: "cm" }, "Impossible de charger le profil : " + msg(e)));
+  }
+}
+
 function card(id, p) {
   const v = h("video", { playsinline: "", loop: "", preload: "metadata", src: p.videoUrl });
   v.muted = true;
@@ -341,23 +429,11 @@ function card(id, p) {
   } }, "↗", h("span", {}, "Partager"));
 
   let fbtn = null;
-  if (p.uid && p.uid !== me.uid) {
-    let on = false;
-    const fid = me.uid + "_" + p.uid;
-    fbtn = h("button", { class: "follow" }, "Suivre");
-    fbtn.onclick = async () => {
-      try {
-        if (on) { await deleteDoc(doc(db, "follows", fid)); on = false; }
-        else { await setDoc(doc(db, "follows", fid), { follower: me.uid, following: p.uid, createdAt: serverTimestamp() }); on = true; }
-        fbtn.textContent = on ? "Abonné" : "Suivre"; fbtn.classList.toggle("on", on);
-      } catch (e) { toast(msg(e)); }
-    };
-    getDoc(doc(db, "follows", fid)).then(s => { if (s.exists()) { on = true; fbtn.textContent = "Abonné"; fbtn.classList.add("on"); } }).catch(() => {});
-  }
+  if (p.uid && p.uid !== me.uid) fbtn = makeFollow(p.uid);
 
   return h("div", { class: "card" }, v, tap, hint,
     h("div", { class: "info" },
-      h("div", {}, h("b", {}, "@" + (p.username || "anonyme")), fbtn),
+      h("div", {}, h("b", { class: "uname", onclick: () => p.uid && openUser(p.uid, p.username) }, "@" + (p.username || "anonyme")), fbtn),
       p.presenter ? h("p", {}, "Présenté par " + p.presenter) : null,
       p.desc ? h("p", {}, p.desc) : null,
       p.music ? h("div", { class: "mus" }, "♪ " + p.music) : null),
