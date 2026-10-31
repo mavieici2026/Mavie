@@ -1,0 +1,541 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>MA VIE</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+html,body{height:100%;background:#000;color:#fff;font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif}
+button,input,textarea{font:inherit;color:inherit}
+button{cursor:pointer;background:none;border:0}
+a{color:#fff}
+#app{position:fixed;inset:0;display:flex;flex-direction:column;max-width:560px;margin:0 auto;background:#000}
+.hidden{display:none!important}
+.logo{font-weight:900;letter-spacing:3px;font-size:22px}
+/* auth */
+#auth{flex:1;display:flex;flex-direction:column;justify-content:center;padding:28px;gap:12px}
+#auth .logo{font-size:38px;text-align:center;margin-bottom:6px}
+#auth p.sub{text-align:center;color:#aaa;margin-bottom:12px}
+input,textarea{width:100%;background:#111;border:1px solid #333;border-radius:12px;padding:13px 14px;outline:none}
+input:focus,textarea:focus{border-color:#fff}
+.btn{background:#fff;color:#000;font-weight:700;border-radius:12px;padding:13px 16px;text-align:center;width:100%}
+.btn.alt{background:#111;color:#fff;border:1px solid #333}
+.btn.small{width:auto;padding:8px 16px;font-size:14px;border-radius:20px}
+.btn:disabled{opacity:.4}
+.link{color:#aaa;text-align:center;padding:8px;font-size:14px}
+#msg{color:#ff6b6b;text-align:center;font-size:14px;min-height:18px}
+/* main */
+#main{flex:1;display:flex;flex-direction:column;min-height:0}
+#screens{flex:1;position:relative;min-height:0}
+.screen{position:absolute;inset:0;overflow:hidden}
+.scroll{overflow-y:auto;-webkit-overflow-scrolling:touch}
+nav{display:flex;border-top:1px solid #222;background:#000;padding-bottom:env(safe-area-inset-bottom)}
+nav button{flex:1;padding:10px 0 8px;font-size:11px;color:#888;display:flex;flex-direction:column;align-items:center;gap:2px}
+nav button .ic{font-size:21px;line-height:1}
+nav button.on{color:#fff}
+nav .plus .ic{background:#fff;color:#000;border-radius:10px;padding:2px 12px;font-weight:900;font-size:20px}
+/* feed */
+.feed{height:100%;overflow-y:scroll;scroll-snap-type:y mandatory;-webkit-overflow-scrolling:touch}
+.card{height:100%;scroll-snap-align:start;scroll-snap-stop:always;position:relative;background:#000;display:flex;align-items:center;justify-content:center}
+.card video{width:100%;height:100%;object-fit:contain;background:#000}
+.topbar{position:absolute;top:0;left:0;right:0;z-index:5;display:flex;justify-content:center;gap:22px;padding:14px;background:linear-gradient(#000a,#0000);pointer-events:none}
+.topbar span{font-weight:700;color:#aaa;pointer-events:auto;cursor:pointer;padding:2px 4px}
+.topbar span.on{color:#fff;border-bottom:2px solid #fff}
+.info{position:absolute;left:12px;right:78px;bottom:14px;text-shadow:0 1px 4px #000}
+.info .who{font-weight:800;font-size:16px;display:flex;align-items:center;gap:10px;margin-bottom:6px}
+.info .desc{font-size:14px;line-height:1.35;max-height:90px;overflow:hidden}
+.tag{font-weight:700;cursor:pointer}
+.follow{border:1px solid #fff;border-radius:6px;padding:2px 10px;font-size:12px;font-weight:700}
+.follow.on{background:#fff;color:#000}
+.side{position:absolute;right:8px;bottom:20px;display:flex;flex-direction:column;gap:18px;align-items:center}
+.side button{display:flex;flex-direction:column;align-items:center;font-size:12px;gap:2px;text-shadow:0 1px 4px #000}
+.side .ic{font-size:30px;line-height:1}
+.side .liked .ic{color:#ff3b5c}
+.avatar{width:36px;height:36px;border-radius:50%;background:#222;object-fit:cover;border:1px solid #444;display:inline-flex;align-items:center;justify-content:center;font-weight:800;overflow:hidden;flex:none}
+.empty{padding:60px 24px;text-align:center;color:#888}
+/* pages */
+.page{padding:16px}
+h2{font-size:20px;margin-bottom:12px}
+.stats{display:flex;justify-content:space-around;margin:14px 0;text-align:center}
+.stats b{display:block;font-size:19px}
+.stats span{color:#aaa;font-size:12px}
+.profile-head{display:flex;flex-direction:column;align-items:center;gap:6px;padding-top:10px}
+.profile-head .avatar{width:84px;height:84px;font-size:32px}
+.box{background:#111;border:1px solid #2a2a2a;border-radius:14px;padding:14px;margin:12px 0}
+.row{display:flex;gap:10px;align-items:center}
+.row>*{flex:1}
+.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:3px;margin-top:8px}
+.thumb{position:relative;aspect-ratio:9/14;background:#111;overflow:hidden;cursor:pointer}
+.thumb video{width:100%;height:100%;object-fit:cover;pointer-events:none}
+.thumb .v{position:absolute;left:5px;bottom:4px;font-size:12px;text-shadow:0 1px 3px #000}
+.thumb .del{position:absolute;right:4px;top:4px;background:#000b;border-radius:8px;padding:3px 8px;font-size:12px}
+.user-line{display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid #1c1c1c;cursor:pointer}
+.small{color:#aaa;font-size:13px}
+progress{width:100%;height:10px}
+/* sheet & overlay */
+.overlay{position:fixed;inset:0;background:#000c;z-index:50;display:flex;align-items:flex-end;justify-content:center}
+.sheet{background:#111;border-radius:18px 18px 0 0;width:100%;max-width:560px;max-height:75vh;display:flex;flex-direction:column;padding:14px}
+.sheet .list{overflow-y:auto;flex:1;margin:10px 0}
+.cm{padding:8px 0;border-bottom:1px solid #1c1c1c;font-size:14px}
+.cm b{margin-right:6px}
+.viewer{position:fixed;inset:0;z-index:60;background:#000;max-width:560px;margin:0 auto}
+.viewer .close{position:absolute;top:10px;left:10px;z-index:70;background:#000a;border-radius:20px;padding:6px 14px;font-weight:700}
+#toast{position:fixed;left:50%;bottom:90px;transform:translateX(-50%);background:#fff;color:#000;padding:10px 18px;border-radius:20px;font-weight:600;font-size:14px;z-index:100;display:none;max-width:90%;text-align:center}
+</style>
+</head>
+<body>
+<div id="app">
+  <!-- Connexion -->
+  <div id="auth">
+    <div class="logo">MA VIE</div>
+    <p class="sub" id="authSub">Connectez-vous pour continuer</p>
+    <input id="aName" class="hidden" placeholder="Nom d'utilisateur" autocomplete="username">
+    <input id="aMail" type="email" placeholder="Adresse e-mail" autocomplete="email">
+    <input id="aPass" type="password" placeholder="Mot de passe (6 caractères minimum)" autocomplete="current-password">
+    <div id="msg"></div>
+    <button class="btn" id="aGo" data-act="authGo">Se connecter</button>
+    <button class="link" id="aSwitch" data-act="authSwitch">Pas de compte ? Créer un compte</button>
+  </div>
+
+  <!-- Application -->
+  <div id="main" class="hidden">
+    <div id="screens">
+      <div class="screen" id="s-home">
+        <div class="topbar"><span id="tPour" class="on" data-act="feedPour">Pour toi</span><span id="tAbo" data-act="feedAbo">Abonnements</span></div>
+        <div class="feed" id="feed"></div>
+      </div>
+      <div class="screen scroll hidden" id="s-search">
+        <div class="page">
+          <h2>Recherche</h2>
+          <div class="row" style="margin-bottom:10px">
+            <input id="q" placeholder="Un créateur, un mot ou un #hashtag" style="flex:3">
+            <button class="btn small" style="flex:1" data-act="doSearch">Chercher</button>
+          </div>
+          <div id="results"><div class="empty">Tapez un nom, un mot ou un #hashtag, puis appuyez sur « Chercher ».</div></div>
+        </div>
+      </div>
+      <div class="screen scroll hidden" id="s-pub">
+        <div class="page">
+          <h2>Publier une vidéo</h2>
+          <div class="box">
+            <p class="small" style="margin-bottom:8px">Choisissez une vidéo de votre téléphone (de 2 secondes à moins de 30 minutes).</p>
+            <input type="file" id="pFile" accept="video/*">
+          </div>
+          <div class="box">
+            <p class="small" style="margin-bottom:8px">Ou collez un lien de vidéo (.mp4) :</p>
+            <input id="pUrl" placeholder="https://...mp4">
+          </div>
+          <textarea id="pDesc" rows="3" placeholder="Description avec #hashtags"></textarea>
+          <progress id="pBar" max="100" value="0" class="hidden" style="margin-top:12px"></progress>
+          <div id="pMsg" class="small" style="margin:10px 0;min-height:18px"></div>
+          <button class="btn" id="pGo" data-act="publish">Publier</button>
+        </div>
+      </div>
+      <div class="screen scroll hidden" id="s-profile"><div class="page" id="profileBox"></div></div>
+    </div>
+    <nav>
+      <button id="n-home" class="on" data-act="go" data-to="home"><span class="ic">⌂</span>Accueil</button>
+      <button id="n-search" data-act="go" data-to="search"><span class="ic">⌕</span>Recherche</button>
+      <button id="n-pub" class="plus" data-act="go" data-to="pub"><span class="ic">+</span></button>
+      <button id="n-profile" data-act="go" data-to="profile"><span class="ic">☺</span>Profil</button>
+    </nav>
+  </div>
+</div>
+<div id="toast"></div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import { getAuth, onAuthStateChanged, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+import { getFirestore, collection, doc, getDoc, getDocs, setDoc, addDoc, updateDoc, deleteDoc, query, where, orderBy, limit, increment, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyDt_UcyL9pXwvfE-5NpOozMykCJh7zvvrs",
+  authDomain: "ma-vie-2b252.firebaseapp.com",
+  projectId: "ma-vie-2b252",
+  storageBucket: "ma-vie-2b252.firebasestorage.app",
+  messagingSenderId: "235933753646",
+  appId: "1:235933753646:web:91df8965e68affbf3f9abf"
+};
+const CLOUD = "gevaxyli", PRESET = "mavie_videos";
+const MIN_SEC = 2, MAX_SEC = 30 * 60;
+const FCFA_PAR_1000_VUES = 100; // calcul de TEST, pas un vrai paiement
+
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db = getFirestore(app);
+
+const $ = id => document.getElementById(id);
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+let me = null, meDoc = null, mode = "login", pendingName = "", feedKind = "pour";
+const userCache = {};
+const viewedNow = new Set();
+
+function toast(t) { const el = $("toast"); el.textContent = t; el.style.display = "block"; clearTimeout(toast.t); toast.t = setTimeout(() => el.style.display = "none", 2800); }
+function fmt(n) { n = Number(n) || 0; return n >= 1e6 ? (n / 1e6).toFixed(1) + " M" : n >= 1e3 ? (n / 1e3).toFixed(1) + " k" : String(n); }
+function errFr(e) {
+  const c = e && e.code || "";
+  if (c.includes("email-already")) return "Cette adresse e-mail est déjà utilisée.";
+  if (c.includes("invalid-email")) return "Adresse e-mail invalide.";
+  if (c.includes("weak-password")) return "Mot de passe trop court (6 caractères minimum).";
+  if (c.includes("invalid-credential") || c.includes("wrong-password") || c.includes("user-not-found")) return "E-mail ou mot de passe incorrect.";
+  if (c.includes("network")) return "Pas de connexion internet.";
+  if (c.includes("permission")) return "Permission refusée par les règles Firestore.";
+  return (e && e.message) || "Une erreur est survenue.";
+}
+async function getUser(uid) {
+  if (userCache[uid]) return userCache[uid];
+  try { const s = await getDoc(doc(db, "users", uid)); userCache[uid] = s.exists() ? { id: uid, ...s.data() } : { id: uid, username: "utilisateur" }; }
+  catch (e) { userCache[uid] = { id: uid, username: "utilisateur" }; }
+  return userCache[uid];
+}
+function avatarHtml(u, big) {
+  const n = (u.username || "?").trim().charAt(0).toUpperCase();
+  return u.photo ? `<img class="avatar" src="${esc(u.photo)}" alt="">` : `<span class="avatar">${esc(n)}</span>`;
+}
+function tagsHtml(text) {
+  return esc(text || "").replace(/#([\p{L}\p{N}_]+)/gu, '<span class="tag" data-act="tag" data-tag="$1">#$1</span>');
+}
+
+/* ---------- Connexion ---------- */
+document.addEventListener("click", async e => {
+  const el = e.target.closest("[data-act]");
+  if (!el) return;
+  const act = el.dataset.act;
+  if (act === "authSwitch") return authSwitch();
+  if (act === "authGo") return authGo();
+  if (act === "go") return go(el.dataset.to);
+  if (act === "feedPour") return setFeed("pour");
+  if (act === "feedAbo") return setFeed("abo");
+  if (act === "doSearch") return doSearch();
+  if (act === "tag") { $("q").value = "#" + el.dataset.tag; closeViewer(); go("search"); return doSearch(); }
+  if (act === "publish") return publish();
+  if (act === "like") return toggleLike(el);
+  if (act === "comment") return openComments(el.dataset.id);
+  if (act === "share") return sharePost(el.dataset.id);
+  if (act === "follow") return toggleFollow(el);
+  if (act === "user") { closeViewer(); go("profile", el.dataset.uid); return; }
+  if (act === "open") return openViewer(el.dataset.id);
+  if (act === "closeViewer") return closeViewer();
+  if (act === "del") return delPost(el.dataset.id);
+  if (act === "editProfile") return editProfile();
+  if (act === "logout") { await signOut(auth); return; }
+  if (act === "playpause") { const v = el.closest(".card").querySelector("video"); v.muted = false; v.paused ? v.play() : v.pause(); return; }
+});
+
+function authSwitch() {
+  mode = mode === "login" ? "signup" : "login";
+  $("aName").classList.toggle("hidden", mode === "login");
+  $("aGo").textContent = mode === "login" ? "Se connecter" : "Créer mon compte";
+  $("aSwitch").textContent = mode === "login" ? "Pas de compte ? Créer un compte" : "Déjà un compte ? Se connecter";
+  $("authSub").textContent = mode === "login" ? "Connectez-vous pour continuer" : "Créez votre compte MA VIE";
+  $("msg").textContent = "";
+}
+async function authGo() {
+  const mail = $("aMail").value.trim(), pass = $("aPass").value, name = $("aName").value.trim();
+  $("msg").textContent = "";
+  if (!mail || !pass) { $("msg").textContent = "Entrez votre e-mail et votre mot de passe."; return; }
+  if (mode === "signup" && name.length < 2) { $("msg").textContent = "Choisissez un nom d'utilisateur (2 lettres minimum)."; return; }
+  $("aGo").disabled = true;
+  try {
+    if (mode === "signup") { pendingName = name; await createUserWithEmailAndPassword(auth, mail, pass); }
+    else await signInWithEmailAndPassword(auth, mail, pass);
+  } catch (e) { $("msg").textContent = errFr(e); }
+  $("aGo").disabled = false;
+}
+onAuthStateChanged(auth, async u => {
+  if (!u) { me = null; meDoc = null; $("main").classList.add("hidden"); $("auth").classList.remove("hidden"); return; }
+  me = u;
+  try {
+    const ref = doc(db, "users", u.uid), s = await getDoc(ref);
+    if (!s.exists()) {
+      const base = { username: pendingName || (u.email || "ami").split("@")[0], bio: "", photo: "", followers: 0, following: 0, createdAt: serverTimestamp() };
+      await setDoc(ref, base);
+    }
+    delete userCache[u.uid];
+    meDoc = await getUser(u.uid);
+  } catch (e) { toast(errFr(e)); meDoc = { id: u.uid, username: "utilisateur" }; }
+  $("auth").classList.add("hidden"); $("main").classList.remove("hidden");
+  go("home");
+});
+
+/* ---------- Navigation ---------- */
+const screens = ["home", "search", "pub", "profile"];
+let curScreen = "home";
+function go(name, uid) {
+  curScreen = name;
+  screens.forEach(s => { $("s-" + s).classList.toggle("hidden", s !== name); $("n-" + s).classList.toggle("on", s === name); });
+  document.querySelectorAll("video").forEach(v => { if (!v.closest("#s-" + name)) v.pause(); });
+  if (name === "home") loadFeed();
+  if (name === "profile") renderProfile(uid || me.uid);
+}
+function setFeed(k) { feedKind = k; $("tPour").classList.toggle("on", k === "pour"); $("tAbo").classList.toggle("on", k === "abo"); loadFeed(); }
+
+/* ---------- Fil de vidéos ---------- */
+async function cardHtml(p, followingSet) {
+  const u = await getUser(p.uid);
+  let liked = false;
+  try { liked = (await getDoc(doc(db, "posts", p.id, "likes", me.uid))).exists(); } catch (e) {}
+  const mine = p.uid === me.uid;
+  const fol = followingSet && followingSet.has(p.uid);
+  return `<div class="card" data-id="${p.id}">
+    <video src="${esc(p.videoUrl)}" loop playsinline muted preload="metadata" data-act="playpause"></video>
+    <div class="info">
+      <div class="who"><span data-act="user" data-uid="${p.uid}" style="display:flex;align-items:center;gap:8px">${avatarHtml(u)}@${esc(u.username)}</span>
+      ${mine ? "" : `<button class="follow ${fol ? "on" : ""}" data-act="follow" data-uid="${p.uid}">${fol ? "Abonné" : "Suivre"}</button>`}</div>
+      <div class="desc">${tagsHtml(p.desc)}</div>
+    </div>
+    <div class="side">
+      <button class="${liked ? "liked" : ""}" data-act="like" data-id="${p.id}"><span class="ic">${liked ? "♥" : "♡"}</span><span class="n">${fmt(p.likes)}</span></button>
+      <button data-act="comment" data-id="${p.id}"><span class="ic">💬</span><span class="n" id="cc-${p.id}">${fmt(p.commentsCount)}</span></button>
+      <button data-act="share" data-id="${p.id}"><span class="ic">↗</span>Partager</button>
+      <button style="pointer-events:none"><span class="ic" style="font-size:22px">👁</span><span class="n" id="vv-${p.id}">${fmt(p.views)}</span></button>
+    </div></div>`;
+}
+async function getFollowing(uid) {
+  try { const s = await getDocs(collection(db, "users", uid, "following")); return new Set(s.docs.map(d => d.id)); } catch (e) { return new Set(); }
+}
+async function loadFeed() {
+  const feed = $("feed");
+  feed.innerHTML = '<div class="empty">Chargement…</div>';
+  try {
+    const snap = await getDocs(query(collection(db, "posts"), orderBy("createdAt", "desc"), limit(30)));
+    let posts = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    const fol = await getFollowing(me.uid);
+    if (feedKind === "abo") {
+      if (fol.size === 0) { feed.innerHTML = '<div class="empty">Vous ne suivez encore personne.<br>Appuyez sur « Suivre » sur une vidéo.</div>'; return; }
+      posts = posts.filter(p => fol.has(p.uid));
+    }
+    if (!posts.length) { feed.innerHTML = '<div class="empty">Aucune vidéo pour le moment.<br>Appuyez sur + pour publier la première.</div>'; return; }
+    feed.innerHTML = (await Promise.all(posts.map(p => cardHtml(p, fol)))).join("");
+    observeCards(feed);
+  } catch (e) { feed.innerHTML = `<div class="empty">${esc(errFr(e))}</div>`; }
+}
+let observer = null;
+function observeCards(root) {
+  if (observer) observer.disconnect();
+  observer = new IntersectionObserver(entries => {
+    entries.forEach(en => {
+      const v = en.target.querySelector("video");
+      if (!v) return;
+      if (en.isIntersecting && en.intersectionRatio > 0.7) { v.play().catch(() => {}); countView(en.target.dataset.id); }
+      else v.pause();
+    });
+  }, { threshold: [0, 0.7, 1], root: root.classList.contains("feed") ? root : null });
+  root.querySelectorAll(".card").forEach(c => observer.observe(c));
+}
+async function countView(id) {
+  if (viewedNow.has(id)) return; viewedNow.add(id);
+  try {
+    const ref = doc(db, "posts", id, "viewers", me.uid);
+    if ((await getDoc(ref)).exists()) return;
+    await setDoc(ref, { at: serverTimestamp() });
+    await updateDoc(doc(db, "posts", id), { views: increment(1) });
+    const el = $("vv-" + id); if (el) el.textContent = fmt((parseInt(el.textContent) || 0) + 1);
+  } catch (e) {}
+}
+async function toggleLike(btn) {
+  const id = btn.dataset.id, liked = btn.classList.contains("liked"), n = btn.querySelector(".n");
+  btn.classList.toggle("liked", !liked);
+  btn.querySelector(".ic").textContent = liked ? "♡" : "♥";
+  const cur = parseInt(n.textContent) || 0; n.textContent = fmt(Math.max(0, cur + (liked ? -1 : 1)));
+  try {
+    const ref = doc(db, "posts", id, "likes", me.uid);
+    if (liked) { await deleteDoc(ref); await updateDoc(doc(db, "posts", id), { likes: increment(-1) }); }
+    else { await setDoc(ref, { at: serverTimestamp() }); await updateDoc(doc(db, "posts", id), { likes: increment(1) }); }
+  } catch (e) { toast(errFr(e)); }
+}
+async function sharePost(id) {
+  const url = location.origin + location.pathname;
+  try { if (navigator.share) await navigator.share({ title: "MA VIE", text: "Regarde cette vidéo sur MA VIE", url }); else { await navigator.clipboard.writeText(url); toast("Lien copié"); } } catch (e) {}
+}
+async function toggleFollow(btn) {
+  const uid = btn.dataset.uid, on = btn.classList.contains("on");
+  try {
+    if (on) {
+      await deleteDoc(doc(db, "users", me.uid, "following", uid)); await deleteDoc(doc(db, "users", uid, "followers", me.uid));
+      await updateDoc(doc(db, "users", me.uid), { following: increment(-1) }); await updateDoc(doc(db, "users", uid), { followers: increment(-1) });
+    } else {
+      await setDoc(doc(db, "users", me.uid, "following", uid), { at: serverTimestamp() }); await setDoc(doc(db, "users", uid, "followers", me.uid), { at: serverTimestamp() });
+      await updateDoc(doc(db, "users", me.uid), { following: increment(1) }); await updateDoc(doc(db, "users", uid), { followers: increment(1) });
+    }
+    delete userCache[uid]; delete userCache[me.uid];
+    document.querySelectorAll(`.follow[data-uid="${uid}"]`).forEach(b => { b.classList.toggle("on", !on); b.textContent = on ? "Suivre" : "Abonné"; });
+    if (curScreen === "profile") renderProfile(uid === me.uid ? me.uid : uid);
+  } catch (e) { toast(errFr(e)); }
+}
+
+/* ---------- Commentaires ---------- */
+async function openComments(id) {
+  const ov = document.createElement("div"); ov.className = "overlay";
+  ov.innerHTML = `<div class="sheet"><b>Commentaires</b><div class="list" id="cList"><div class="small">Chargement…</div></div>
+    <div class="row"><input id="cIn" placeholder="Ajouter un commentaire…" style="flex:4"><button class="btn small" id="cSend" style="flex:1">Envoyer</button></div></div>`;
+  ov.addEventListener("click", ev => { if (ev.target === ov) ov.remove(); });
+  document.body.appendChild(ov);
+  const list = ov.querySelector("#cList");
+  async function load() {
+    try {
+      const s = await getDocs(query(collection(db, "posts", id, "comments"), orderBy("createdAt", "asc"), limit(100)));
+      list.innerHTML = s.empty ? '<div class="small">Aucun commentaire. Soyez le premier !</div>' : s.docs.map(d => { const c = d.data(); return `<div class="cm"><b>@${esc(c.username)}</b>${esc(c.text)}</div>`; }).join("");
+      list.scrollTop = list.scrollHeight;
+    } catch (e) { list.innerHTML = `<div class="small">${esc(errFr(e))}</div>`; }
+  }
+  await load();
+  ov.querySelector("#cSend").onclick = async () => {
+    const t = ov.querySelector("#cIn").value.trim(); if (!t) return;
+    try {
+      await addDoc(collection(db, "posts", id, "comments"), { uid: me.uid, username: meDoc.username, text: t.slice(0, 500), createdAt: serverTimestamp() });
+      await updateDoc(doc(db, "posts", id), { commentsCount: increment(1) });
+      ov.querySelector("#cIn").value = "";
+      const el = $("cc-" + id); if (el) el.textContent = fmt((parseInt(el.textContent) || 0) + 1);
+      await load();
+    } catch (e) { toast(errFr(e)); }
+  };
+}
+
+/* ---------- Publication (Cloudinary) ---------- */
+function videoDuration(file) {
+  return new Promise((res, rej) => {
+    const v = document.createElement("video"); v.preload = "metadata";
+    v.onloadedmetadata = () => { URL.revokeObjectURL(v.src); res(v.duration); };
+    v.onerror = () => rej(new Error("Impossible de lire cette vidéo."));
+    v.src = URL.createObjectURL(file);
+  });
+}
+function uploadVideo(file) {
+  return new Promise((res, rej) => {
+    const fd = new FormData(); fd.append("file", file); fd.append("upload_preset", PRESET);
+    const x = new XMLHttpRequest();
+    x.open("POST", `https://api.cloudinary.com/v1_1/${CLOUD}/video/upload`);
+    x.upload.onprogress = e => { if (e.lengthComputable) $("pBar").value = Math.round(e.loaded / e.total * 100); };
+    x.onload = () => { try { const r = JSON.parse(x.responseText); r.secure_url ? res(r.secure_url) : rej(new Error((r.error && r.error.message) || "Échec de l'envoi.")); } catch (e) { rej(new Error("Échec de l'envoi.")); } };
+    x.onerror = () => rej(new Error("Pas de connexion internet."));
+    x.send(fd);
+  });
+}
+async function publish() {
+  const file = $("pFile").files[0], url = $("pUrl").value.trim(), desc = $("pDesc").value.trim();
+  const m = $("pMsg"); m.textContent = "";
+  if (!file && !url) { m.textContent = "Choisissez une vidéo ou collez un lien."; return; }
+  $("pGo").disabled = true; $("pBar").classList.remove("hidden"); $("pBar").value = 0;
+  try {
+    let videoUrl = url;
+    if (file) {
+      const d = await videoDuration(file);
+      if (d < MIN_SEC) throw new Error("La vidéo est trop courte (2 secondes minimum).");
+      if (d >= MAX_SEC) throw new Error("La vidéo est trop longue : elle doit durer moins de 30 minutes.");
+      m.textContent = "Envoi en cours… ne fermez pas la page.";
+      videoUrl = await uploadVideo(file);
+    }
+    const tags = [...desc.matchAll(/#([\p{L}\p{N}_]+)/gu)].map(x => x[1].toLowerCase());
+    await addDoc(collection(db, "posts"), { uid: me.uid, username: meDoc.username, videoUrl, desc, tags, views: 0, likes: 0, commentsCount: 0, createdAt: serverTimestamp() });
+    $("pFile").value = ""; $("pUrl").value = ""; $("pDesc").value = "";
+    toast("Vidéo publiée !"); go("home");
+  } catch (e) { m.textContent = e.message || errFr(e); }
+  $("pGo").disabled = false; $("pBar").classList.add("hidden");
+}
+async function delPost(id) {
+  if (!confirm("Supprimer cette vidéo ?")) return;
+  try { await deleteDoc(doc(db, "posts", id)); toast("Vidéo supprimée"); renderProfile(me.uid); } catch (e) { toast(errFr(e)); }
+}
+
+/* ---------- Profil ---------- */
+async function renderProfile(uid) {
+  const box = $("profileBox"); box.innerHTML = '<div class="empty">Chargement…</div>';
+  delete userCache[uid];
+  const u = await getUser(uid), mine = uid === me.uid;
+  let posts = [];
+  try { const s = await getDocs(query(collection(db, "posts"), where("uid", "==", uid))); posts = s.docs.map(d => ({ id: d.id, ...d.data() })).sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0)); } catch (e) {}
+  const views = posts.reduce((t, p) => t + (p.views || 0), 0);
+  const gains = Math.floor(views / 1000 * FCFA_PAR_1000_VUES);
+  let fol = false; if (!mine) fol = (await getFollowing(me.uid)).has(uid);
+  box.innerHTML = `
+    ${mine ? "" : '<button class="link" style="text-align:left" data-act="go" data-to="home">← Retour</button>'}
+    <div class="profile-head">${avatarHtml(u)}<b style="font-size:19px">@${esc(u.username)}</b><div class="small" style="text-align:center">${esc(u.bio || "")}</div></div>
+    <div class="stats"><div><b>${posts.length}</b><span>Vidéos</span></div><div><b>${fmt(u.followers)}</b><span>Abonnés</span></div><div><b>${fmt(u.following)}</b><span>Abonnements</span></div><div><b>${fmt(views)}</b><span>Vues</span></div></div>
+    ${mine ? `<div class="row"><button class="btn alt" data-act="editProfile">Modifier mon profil</button><button class="btn alt" data-act="logout">Se déconnecter</button></div>
+      <div class="box"><b>Mes gains (estimation)</b><div style="font-size:28px;font-weight:800;margin:6px 0">${gains} FCFA</div>
+      <div class="small">${views} vues · calcul de test : ${FCFA_PAR_1000_VUES} FCFA pour 1 000 vues. Les vrais paiements ne sont pas encore actifs.</div>
+      <button class="btn" style="margin-top:10px" disabled>Retirer</button></div>`
+    : `<button class="btn ${fol ? "alt" : ""} follow ${fol ? "on" : ""}" data-act="follow" data-uid="${uid}" style="border-radius:12px">${fol ? "Abonné" : "Suivre"}</button>`}
+    <h2 style="margin-top:16px">${mine ? "Mes vidéos" : "Vidéos"}</h2>
+    ${posts.length ? `<div class="grid">${posts.map(p => `<div class="thumb" data-act="open" data-id="${p.id}"><video src="${esc(p.videoUrl)}#t=0.5" preload="metadata" muted playsinline></video><span class="v">👁 ${fmt(p.views)}</span>${mine ? `<span class="del" data-act="del" data-id="${p.id}">Supprimer</span>` : ""}</div>`).join("")}</div>` : '<div class="empty">Aucune vidéo.</div>'}`;
+}
+function editProfile() {
+  const ov = document.createElement("div"); ov.className = "overlay";
+  ov.innerHTML = `<div class="sheet"><b>Modifier mon profil</b>
+    <div style="display:flex;flex-direction:column;gap:10px;margin:12px 0">
+      <input id="eName" value="${esc(meDoc.username)}" placeholder="Nom d'utilisateur">
+      <textarea id="eBio" rows="2" placeholder="Description">${esc(meDoc.bio || "")}</textarea>
+      <div class="small">Photo de profil (depuis votre téléphone) :</div><input type="file" id="ePhoto" accept="image/*">
+      <div id="eMsg" class="small"></div></div>
+    <div class="row"><button class="btn alt" id="eCancel">Annuler</button><button class="btn" id="eSave">Enregistrer</button></div></div>`;
+  ov.addEventListener("click", ev => { if (ev.target === ov) ov.remove(); });
+  document.body.appendChild(ov);
+  ov.querySelector("#eCancel").onclick = () => ov.remove();
+  ov.querySelector("#eSave").onclick = async () => {
+    const name = ov.querySelector("#eName").value.trim(), bio = ov.querySelector("#eBio").value.trim().slice(0, 150), f = ov.querySelector("#ePhoto").files[0];
+    if (name.length < 2) { ov.querySelector("#eMsg").textContent = "Nom trop court."; return; }
+    try {
+      const data = { username: name, bio };
+      if (f) data.photo = await resizePhoto(f);
+      await updateDoc(doc(db, "users", me.uid), data);
+      delete userCache[me.uid]; meDoc = await getUser(me.uid);
+      ov.remove(); toast("Profil enregistré"); renderProfile(me.uid);
+    } catch (e) { ov.querySelector("#eMsg").textContent = errFr(e); }
+  };
+}
+function resizePhoto(file) {
+  return new Promise((res, rej) => {
+    const img = new Image();
+    img.onload = () => {
+      const S = 256, c = document.createElement("canvas"); c.width = c.height = S;
+      const side = Math.min(img.width, img.height), sx = (img.width - side) / 2, sy = (img.height - side) / 2;
+      c.getContext("2d").drawImage(img, sx, sy, side, side, 0, 0, S, S);
+      URL.revokeObjectURL(img.src); res(c.toDataURL("image/jpeg", 0.8));
+    };
+    img.onerror = () => rej(new Error("Photo illisible."));
+    img.src = URL.createObjectURL(file);
+  });
+}
+
+/* ---------- Recherche ---------- */
+async function doSearch() {
+  const raw = $("q").value.trim(), box = $("results");
+  if (!raw) { box.innerHTML = '<div class="empty">Tapez un nom, un mot ou un #hashtag.</div>'; return; }
+  box.innerHTML = '<div class="empty">Recherche…</div>';
+  const term = raw.toLowerCase().replace(/^@/, ""), isTag = term.startsWith("#"), t = term.replace(/^#/, "");
+  try {
+    const [us, ps] = await Promise.all([
+      getDocs(query(collection(db, "users"), limit(200))),
+      getDocs(query(collection(db, "posts"), orderBy("createdAt", "desc"), limit(200)))
+    ]);
+    const users = isTag ? [] : us.docs.map(d => ({ id: d.id, ...d.data() })).filter(u => (u.username || "").toLowerCase().includes(t));
+    const posts = ps.docs.map(d => ({ id: d.id, ...d.data() })).filter(p => {
+      const desc = (p.desc || "").toLowerCase();
+      return isTag ? (p.tags || []).includes(t) || desc.includes("#" + t) : desc.includes(t) || (p.tags || []).includes(t) || (p.username || "").toLowerCase().includes(t);
+    });
+    let h = "";
+    if (users.length) h += `<h2>Créateurs</h2>` + users.map(u => `<div class="user-line" data-act="user" data-uid="${u.id}">${avatarHtml(u)}<div><b>@${esc(u.username)}</b><div class="small">${fmt(u.followers)} abonnés</div></div></div>`).join("");
+    if (posts.length) h += `<h2 style="margin-top:16px">Vidéos</h2><div class="grid">${posts.map(p => `<div class="thumb" data-act="open" data-id="${p.id}"><video src="${esc(p.videoUrl)}#t=0.5" preload="metadata" muted playsinline></video><span class="v">👁 ${fmt(p.views)}</span></div>`).join("")}</div>`;
+    box.innerHTML = h || `<div class="empty">Aucun résultat pour « ${esc(raw)} ».</div>`;
+  } catch (e) { box.innerHTML = `<div class="empty">${esc(errFr(e))}</div>`; }
+}
+
+/* ---------- Lecteur plein écran ---------- */
+async function openViewer(id) {
+  try {
+    const s = await getDoc(doc(db, "posts", id)); if (!s.exists()) { toast("Vidéo introuvable"); return; }
+    const p = { id, ...s.data() }, fol = await getFollowing(me.uid);
+    const v = document.createElement("div"); v.className = "viewer"; v.id = "viewer";
+    v.innerHTML = `<button class="close" data-act="closeViewer">← Retour</button><div class="feed">${await cardHtml(p, fol)}</div>`;
+    document.body.appendChild(v);
+    document.querySelectorAll("#s-home video, #s-profile video, #s-search video").forEach(x => x.pause());
+    observeCards(v.querySelector(".feed"));
+    const vid = v.querySelector("video"); vid.muted = false; vid.play().catch(() => { vid.muted = true; vid.play().catch(() => {}); });
+  } catch (e) { toast(errFr(e)); }
+}
+function closeViewer() { const v = $("viewer"); if (v) v.remove(); }
+</script>
+</body>
+</html>
