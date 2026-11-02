@@ -1,0 +1,580 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#000000">
+<title>Ma Vie</title>
+<style>
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;height:100%;background:#000;color:#fff;font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif}
+button{font:inherit;color:inherit;cursor:pointer}
+input,textarea,select{font:inherit;width:100%;padding:12px;border-radius:10px;border:1px solid #333;background:#111;color:#fff;margin:6px 0}
+input[type=file]{padding:10px}
+.btn{background:#fff;color:#000;border:0;border-radius:10px;padding:12px 16px;font-weight:700;width:100%;margin-top:8px}
+.btn.alt{background:#222;color:#fff;border:1px solid #333}
+.btn.small{width:auto;padding:6px 12px;font-size:13px;margin:0}
+.btn:disabled{opacity:.4}
+.muted{color:#999;font-size:13px}
+.logo{font-size:34px;font-weight:900;letter-spacing:3px;text-align:center;margin:40px 0 20px}
+#screen{height:calc(100dvh - 56px - env(safe-area-inset-bottom));overflow-y:auto}
+#screen.noav{height:100dvh}
+.pad{padding:16px;max-width:520px;margin:0 auto}
+nav{position:fixed;left:0;right:0;bottom:0;height:calc(56px + env(safe-area-inset-bottom));padding-bottom:env(safe-area-inset-bottom);background:#000;border-top:1px solid #222;display:flex;z-index:20}
+nav[hidden]{display:none}
+nav button{flex:1;background:none;border:0;font-size:12px;color:#888}
+nav button.on{color:#fff;font-weight:700}
+nav button .ic{display:block;font-size:20px}
+.top{position:absolute;top:0;left:0;right:0;z-index:10;display:flex;justify-content:center;gap:24px;padding:14px;background:linear-gradient(#000a,#0000)}
+.top button{background:none;border:0;font-size:16px;color:#bbb;padding:4px 2px}
+.top button.on{color:#fff;font-weight:800;border-bottom:2px solid #fff}
+.feedwrap{position:relative;height:100%}
+#feed{height:100%;overflow-y:scroll;scroll-snap-type:y mandatory}
+.post{position:relative;height:100%;scroll-snap-align:start;scroll-snap-stop:always;background:#000;overflow:hidden}
+.post video{width:100%;height:100%;object-fit:contain;background:#000}
+.side{position:absolute;right:10px;bottom:90px;display:flex;flex-direction:column;gap:16px;align-items:center}
+.side button{background:#0008;border:0;border-radius:50%;width:48px;height:48px;font-size:22px;line-height:1}
+.side small{display:block;font-size:12px;margin-top:2px}
+.side .col{text-align:center}
+.side button.liked{background:#fff;color:#000}
+.info{position:absolute;left:12px;right:80px;bottom:20px;text-shadow:0 1px 3px #000}
+.info .u{font-weight:800;font-size:16px;cursor:pointer}
+.info .d{margin:6px 0;font-size:14px;word-break:break-word}
+.av{width:44px;height:44px;border-radius:50%;background:#333;object-fit:cover;display:inline-flex;align-items:center;justify-content:center;font-weight:800;overflow:hidden;flex:none}
+.av.big{width:96px;height:96px;font-size:36px}
+.row{display:flex;align-items:center;gap:12px}
+.card{background:#111;border:1px solid #222;border-radius:14px;padding:14px;margin:12px 0}
+.stats{display:flex;justify-content:space-around;text-align:center;margin:14px 0}
+.stats b{display:block;font-size:18px}
+.vid{background:#111;border:1px solid #222;border-radius:12px;padding:10px;margin:10px 0}
+.vid video{width:100%;max-height:260px;border-radius:8px;background:#000}
+.vid .t{word-break:break-word;font-size:14px;margin:6px 0}
+.overlay{position:fixed;inset:0;background:#000b;z-index:50;display:flex;align-items:flex-end;justify-content:center}
+.sheet{background:#111;border-top:1px solid #333;border-radius:18px 18px 0 0;width:100%;max-width:560px;max-height:85dvh;overflow-y:auto;padding:16px}
+.sheet h3{margin:0 0 8px}
+.cm{padding:8px 0;border-bottom:1px solid #222;font-size:14px;word-break:break-word}
+.err{color:#ff6b6b;font-size:14px;margin:6px 0}
+.ok{color:#6bff95;font-size:14px;margin:6px 0}
+.bar{height:8px;background:#222;border-radius:8px;overflow:hidden;margin:8px 0}
+.bar i{display:block;height:100%;background:#fff;width:0}
+#toast{position:fixed;left:50%;bottom:90px;transform:translateX(-50%);background:#fff;color:#000;padding:10px 16px;border-radius:20px;font-weight:600;z-index:99;display:none;max-width:90%;text-align:center}
+.tag{display:inline-block;padding:2px 8px;border-radius:10px;font-size:12px;background:#333}
+.tag.att{background:#7a5c00}
+.tag.pay{background:#0a5c2a}
+.tag.ref{background:#7a1c1c}
+</style>
+</head>
+<body>
+<div id="screen" class="noav"></div>
+<nav id="nav" hidden>
+  <button data-act="go" data-tab="home"><span class="ic">🏠</span>Accueil</button>
+  <button data-act="go" data-tab="search"><span class="ic">🔍</span>Recherche</button>
+  <button data-act="go" data-tab="add"><span class="ic">➕</span>Publier</button>
+  <button data-act="go" data-tab="profile"><span class="ic">👤</span>Profil</button>
+</nav>
+<div id="modal"></div>
+<div id="toast"></div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import { getAuth, onAuthStateChanged, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+import { getFirestore, doc, getDoc, setDoc, updateDoc, addDoc, deleteDoc, collection, query, where, orderBy, limit, getDocs, serverTimestamp, increment } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyDt_UcyL9pXwvfE-5NpOozMykCJh7zvvrs",
+  authDomain: "ma-vie-2b252.firebaseapp.com",
+  projectId: "ma-vie-2b252",
+  storageBucket: "ma-vie-2b252.firebasestorage.app",
+  messagingSenderId: "235933753646",
+  appId: "1:235933753646:web:91df8965e68affbf3f9abf"
+};
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db = getFirestore(app);
+
+// Réglages
+const CLOUD = "gevaxyli", PRESET = "mavie_videos";
+const GAIN_PAR_1000_VUES = 100;   // calcul de test : 100 FCFA pour 1 000 vues
+const MIN_RETRAIT = 500;          // montant minimum d'une demande de retrait (FCFA)
+
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const fmt = n => Math.round(n).toLocaleString("fr-FR");
+
+let me = null, meDoc = null, tab = "home", feedMode = "pour";
+let following = new Set(), posts = {}, viewed = new Set(), soundOn = false, observer = null;
+
+function toast(t) {
+  const el = $("#toast"); el.textContent = t; el.style.display = "block";
+  clearTimeout(toast.t); toast.t = setTimeout(() => el.style.display = "none", 2800);
+}
+function avatar(u, big) {
+  const cls = "av" + (big ? " big" : "");
+  if (u && u.photoURL) return `<img class="${cls}" src="${esc(u.photoURL)}" alt="">`;
+  return `<span class="${cls}">${esc((u && u.username || "?").charAt(0).toUpperCase())}</span>`;
+}
+function setScreen(html, withNav = true) {
+  const s = $("#screen"); s.className = withNav ? "" : "noav"; s.innerHTML = html; s.scrollTop = 0;
+  $("#nav").hidden = !withNav;
+}
+function openModal(html) {
+  $("#modal").innerHTML = `<div class="overlay" data-act="close"><div class="sheet" data-stop="1">${html}</div></div>`;
+}
+function closeModal() { $("#modal").innerHTML = ""; }
+
+/* ---------- CONNEXION ---------- */
+function showAuth(mode = "login") {
+  setScreen(`<div class="pad">
+    <div class="logo">MA VIE</div>
+    <p class="muted" style="text-align:center">${mode === "login" ? "Connecte-toi pour continuer" : "Crée ton compte"}</p>
+    ${mode === "signup" ? '<input id="a_name" placeholder="Nom d\'utilisateur" autocomplete="username">' : ""}
+    <input id="a_mail" type="email" placeholder="Adresse e-mail" autocomplete="email">
+    <input id="a_pass" type="password" placeholder="Mot de passe (6 caractères minimum)" autocomplete="${mode === "login" ? "current-password" : "new-password"}">
+    <div id="a_err" class="err"></div>
+    <button class="btn" data-act="${mode === "login" ? "login" : "signup"}">${mode === "login" ? "Se connecter" : "Créer mon compte"}</button>
+    <button class="btn alt" data-act="authmode" data-mode="${mode === "login" ? "signup" : "login"}">${mode === "login" ? "Je n'ai pas de compte" : "J'ai déjà un compte"}</button>
+  </div>`, false);
+}
+function authError(e) {
+  const m = {
+    "auth/invalid-email": "Adresse e-mail incorrecte.",
+    "auth/missing-password": "Écris ton mot de passe.",
+    "auth/weak-password": "Mot de passe trop court (6 caractères minimum).",
+    "auth/email-already-in-use": "Cette adresse e-mail a déjà un compte.",
+    "auth/invalid-credential": "E-mail ou mot de passe incorrect.",
+    "auth/user-not-found": "E-mail ou mot de passe incorrect.",
+    "auth/wrong-password": "E-mail ou mot de passe incorrect.",
+    "auth/network-request-failed": "Pas de connexion internet."
+  };
+  return m[e.code] || ("Erreur : " + (e.code || e.message));
+}
+async function doLogin() {
+  try { await signInWithEmailAndPassword(auth, $("#a_mail").value.trim(), $("#a_pass").value); }
+  catch (e) { $("#a_err").textContent = authError(e); }
+}
+async function doSignup() {
+  const name = $("#a_name").value.trim();
+  if (name.length < 2) { $("#a_err").textContent = "Écris un nom d'utilisateur (2 lettres minimum)."; return; }
+  try {
+    window.__newName = name;
+    await createUserWithEmailAndPassword(auth, $("#a_mail").value.trim(), $("#a_pass").value);
+  } catch (e) { window.__newName = null; $("#a_err").textContent = authError(e); }
+}
+
+onAuthStateChanged(auth, async user => {
+  me = user;
+  if (!user) { meDoc = null; following = new Set(); showAuth("login"); return; }
+  try {
+    const ref = doc(db, "users", user.uid);
+    let snap = await getDoc(ref);
+    if (!snap.exists()) {
+      const name = window.__newName || (user.email || "ami").split("@")[0];
+      await setDoc(ref, { username: name, usernameLower: name.toLowerCase(), bio: "", photoURL: "", followersCount: 0, followingCount: 0, createdAt: serverTimestamp() });
+      snap = await getDoc(ref);
+    }
+    meDoc = snap.data();
+    const f = await getDocs(collection(db, "users", user.uid, "following"));
+    following = new Set(f.docs.map(d => d.id));
+  } catch (e) { toast("Erreur de chargement : " + e.code); }
+  go("home");
+});
+
+/* ---------- NAVIGATION ---------- */
+function go(t) {
+  tab = t;
+  document.querySelectorAll("nav button").forEach(b => b.classList.toggle("on", b.dataset.tab === t));
+  if (t === "home") renderHome();
+  else if (t === "search") renderSearch();
+  else if (t === "add") renderAdd();
+  else if (t === "profile") renderProfile(me.uid);
+}
+
+/* ---------- ACCUEIL / FIL ---------- */
+function renderHome() {
+  setScreen(`<div class="feedwrap">
+    <div class="top">
+      <button data-act="feedmode" data-mode="abo" class="${feedMode === "abo" ? "on" : ""}">Abonnements</button>
+      <button data-act="feedmode" data-mode="pour" class="${feedMode === "pour" ? "on" : ""}">Pour toi</button>
+    </div>
+    <div id="feed"><div class="pad muted" style="padding-top:80px;text-align:center">Chargement…</div></div>
+  </div>`);
+  loadFeed();
+}
+async function loadFeed() {
+  const feed = $("#feed");
+  try {
+    const snap = await getDocs(query(collection(db, "posts"), orderBy("createdAt", "desc"), limit(40)));
+    let list = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    if (feedMode === "abo") list = list.filter(p => following.has(p.uid));
+    list.forEach(p => posts[p.id] = p);
+    if (!list.length) {
+      feed.innerHTML = `<div class="pad" style="padding-top:120px;text-align:center">${feedMode === "abo" ? "Vous ne suivez encore personne.<br><span class='muted'>Appuie sur « Suivre » sous une vidéo.</span>" : "Aucune vidéo pour l'instant.<br><span class='muted'>Appuie sur ➕ pour publier la première !</span>"}</div>`;
+      return;
+    }
+    feed.innerHTML = list.map(postHtml).join("");
+    setupObserver();
+    list.forEach(async p => {
+      try {
+        const l = await getDoc(doc(db, "posts", p.id, "likes", me.uid));
+        if (l.exists()) feed.querySelector(`[data-act=like][data-id="${p.id}"]`)?.classList.add("liked");
+      } catch (e) {}
+    });
+  } catch (e) {
+    feed.innerHTML = `<div class="pad err" style="padding-top:100px">Impossible de charger les vidéos (${esc(e.code || e.message)}).</div>`;
+  }
+}
+function followBtn(uid) {
+  if (uid === me.uid) return "";
+  const f = following.has(uid);
+  return `<button class="btn small ${f ? "alt" : ""}" data-act="follow" data-uid="${uid}">${f ? "Abonné" : "Suivre"}</button>`;
+}
+function postHtml(p) {
+  return `<section class="post" data-id="${p.id}">
+    <video src="${esc(p.videoURL)}" loop playsinline muted preload="metadata" data-act="sound"></video>
+    <div class="side">
+      <div class="col"><button data-act="like" data-id="${p.id}">♥</button><small id="lc_${p.id}">${p.likesCount || 0}</small></div>
+      <div class="col"><button data-act="comments" data-id="${p.id}">💬</button><small id="cc_${p.id}">${p.commentsCount || 0}</small></div>
+      <div class="col"><button data-act="share" data-id="${p.id}">↗</button><small>Partager</small></div>
+      <div class="col muted"><small>👁 ${p.views || 0}</small></div>
+    </div>
+    <div class="info">
+      <div class="row"><span class="u" data-act="user" data-uid="${p.uid}">@${esc(p.username)}</span>${followBtn(p.uid)}</div>
+      ${p.presenter ? `<div class="muted">Présentateur : ${esc(p.presenter)}</div>` : ""}
+      <div class="d">${esc(p.description)}</div>
+      ${p.music ? `<div class="muted">🎵 ${esc(p.music)}</div>` : ""}
+    </div>
+  </section>`;
+}
+function setupObserver() {
+  if (observer) observer.disconnect();
+  observer = new IntersectionObserver(entries => {
+    entries.forEach(en => {
+      const v = en.target.querySelector("video");
+      if (en.isIntersecting) {
+        v.muted = !soundOn; v.play().catch(() => {});
+        recordView(en.target.dataset.id);
+      } else v.pause();
+    });
+  }, { root: $("#feed"), threshold: 0.7 });
+  document.querySelectorAll(".post").forEach(p => observer.observe(p));
+}
+async function recordView(id) {
+  const p = posts[id];
+  if (!p || p.uid === me.uid || viewed.has(id)) return;
+  viewed.add(id);
+  try {
+    const r = doc(db, "posts", id, "viewers", me.uid);
+    const s = await getDoc(r);
+    if (!s.exists()) {
+      await setDoc(r, { at: serverTimestamp() });
+      await updateDoc(doc(db, "posts", id), { views: increment(1) });
+    }
+  } catch (e) {}
+}
+async function toggleLike(id, btn) {
+  const lref = doc(db, "posts", id, "likes", me.uid), pref = doc(db, "posts", id);
+  const liked = btn.classList.contains("liked");
+  const lc = $("#lc_" + id);
+  try {
+    if (liked) {
+      await deleteDoc(lref); await updateDoc(pref, { likesCount: increment(-1) });
+      btn.classList.remove("liked"); lc.textContent = Math.max(0, (+lc.textContent) - 1);
+    } else {
+      await setDoc(lref, { at: serverTimestamp() }); await updateDoc(pref, { likesCount: increment(1) });
+      btn.classList.add("liked"); lc.textContent = (+lc.textContent) + 1;
+    }
+  } catch (e) { toast("Erreur : " + (e.code || e.message)); }
+}
+async function toggleFollow(uid) {
+  try {
+    if (following.has(uid)) {
+      await deleteDoc(doc(db, "users", me.uid, "following", uid));
+      await deleteDoc(doc(db, "users", uid, "followers", me.uid));
+      await updateDoc(doc(db, "users", me.uid), { followingCount: increment(-1) });
+      await updateDoc(doc(db, "users", uid), { followersCount: increment(-1) });
+      following.delete(uid);
+    } else {
+      await setDoc(doc(db, "users", me.uid, "following", uid), { at: serverTimestamp() });
+      await setDoc(doc(db, "users", uid, "followers", me.uid), { at: serverTimestamp() });
+      await updateDoc(doc(db, "users", me.uid), { followingCount: increment(1) });
+      await updateDoc(doc(db, "users", uid), { followersCount: increment(1) });
+      following.add(uid);
+    }
+    const f = following.has(uid);
+    document.querySelectorAll(`[data-act=follow][data-uid="${uid}"]`).forEach(b => {
+      b.textContent = f ? "Abonné" : "Suivre"; b.classList.toggle("alt", f);
+    });
+  } catch (e) { toast("Erreur : " + (e.code || e.message)); }
+}
+async function sharePost(id) {
+  const p = posts[id] || {};
+  const url = location.href.split("#")[0];
+  const text = `Regarde cette vidéo de @${p.username || ""} sur Ma Vie`;
+  try {
+    if (navigator.share) await navigator.share({ title: "Ma Vie", text, url });
+    else { await navigator.clipboard.writeText(url); toast("Lien copié"); }
+  } catch (e) {}
+}
+async function openComments(id) {
+  openModal(`<h3>Commentaires</h3><div id="cm_list" class="muted">Chargement…</div>
+    <input id="cm_in" placeholder="Écris un commentaire…" maxlength="300">
+    <button class="btn" data-act="sendcomment" data-id="${id}">Envoyer</button>
+    <button class="btn alt" data-act="close">Fermer</button>`);
+  try {
+    const s = await getDocs(query(collection(db, "posts", id, "comments"), orderBy("createdAt", "asc"), limit(100)));
+    $("#cm_list").innerHTML = s.empty ? "Aucun commentaire. Sois le premier !" :
+      s.docs.map(d => { const c = d.data(); return `<div class="cm"><b>@${esc(c.username)}</b> ${esc(c.text)}</div>`; }).join("");
+  } catch (e) { $("#cm_list").textContent = "Erreur : " + (e.code || e.message); }
+}
+async function sendComment(id) {
+  const inp = $("#cm_in"), text = inp.value.trim();
+  if (!text) return;
+  try {
+    await addDoc(collection(db, "posts", id, "comments"), { uid: me.uid, username: meDoc.username, text, createdAt: serverTimestamp() });
+    await updateDoc(doc(db, "posts", id), { commentsCount: increment(1) });
+    const c = $("#cc_" + id); if (c) c.textContent = (+c.textContent) + 1;
+    openComments(id);
+  } catch (e) { toast("Erreur : " + (e.code || e.message)); }
+}
+
+/* ---------- RECHERCHE ---------- */
+function renderSearch() {
+  setScreen(`<div class="pad">
+    <h2 style="margin:8px 0">Recherche</h2>
+    <input id="q" placeholder="Un créateur, un mot ou un #hashtag" autocomplete="off">
+    <div id="res" class="muted">Écris pour chercher.</div>
+  </div>`);
+  let t; $("#q").addEventListener("input", () => { clearTimeout(t); t = setTimeout(doSearch, 400); });
+}
+async function doSearch() {
+  const raw = $("#q").value.trim(), res = $("#res");
+  if (!raw) { res.textContent = "Écris pour chercher."; return; }
+  res.textContent = "Recherche…";
+  const q = raw.toLowerCase().replace(/^@/, "");
+  try {
+    let users = [], vids = [];
+    if (!q.startsWith("#")) {
+      const us = await getDocs(query(collection(db, "users"), where("usernameLower", ">=", q), where("usernameLower", "<=", q + "\uf8ff"), limit(10)));
+      users = us.docs.map(d => ({ id: d.id, ...d.data() }));
+    }
+    if (q.startsWith("#")) {
+      const vs = await getDocs(query(collection(db, "posts"), where("hashtags", "array-contains", q), limit(30)));
+      vids = vs.docs.map(d => ({ id: d.id, ...d.data() }));
+    } else {
+      const vs = await getDocs(query(collection(db, "posts"), orderBy("createdAt", "desc"), limit(150)));
+      vids = vs.docs.map(d => ({ id: d.id, ...d.data() })).filter(p => (p.searchText || "").includes(q)).slice(0, 30);
+    }
+    let h = "";
+    if (users.length) h += `<h3>Créateurs</h3>` + users.map(u => `<div class="row card" data-act="user" data-uid="${u.id}" style="cursor:pointer">${avatar(u)}<div><b>@${esc(u.username)}</b><div class="muted">${u.followersCount || 0} abonnés</div></div></div>`).join("");
+    if (vids.length) h += `<h3>Vidéos</h3>` + vids.map(videoCard).join("");
+    res.innerHTML = h || "Aucun résultat.";
+  } catch (e) { res.innerHTML = `<span class="err">Erreur : ${esc(e.code || e.message)}</span>`; }
+}
+function videoCard(p, own) {
+  return `<div class="vid">
+    <video src="${esc(p.videoURL)}" controls playsinline preload="metadata"></video>
+    <div class="t"><b>@${esc(p.username)}</b> ${esc(p.description)}</div>
+    <div class="muted">♥ ${p.likesCount || 0} · 💬 ${p.commentsCount || 0} · 👁 ${p.views || 0} vues</div>
+    ${own ? `<button class="btn alt small" style="margin-top:8px" data-act="delpost" data-id="${p.id}">Supprimer</button>` : ""}
+  </div>`;
+}
+
+/* ---------- PUBLIER ---------- */
+let pickedVideo = null;
+function renderAdd() {
+  pickedVideo = null;
+  setScreen(`<div class="pad">
+    <h2 style="margin:8px 0">Publier une vidéo</h2>
+    <input id="p_file" type="file" accept="video/*">
+    <div class="muted">De 2 secondes à moins de 30 minutes.</div>
+    <input id="p_presenter" placeholder="Présentateur (ton nom ou celui qui parle)">
+    <textarea id="p_desc" rows="3" placeholder="Description avec #hashtags"></textarea>
+    <input id="p_music" placeholder="Musique (ex : Titre – Artiste)">
+    <div id="p_bar" class="bar" hidden><i></i></div>
+    <div id="p_msg" class="err"></div>
+    <button id="p_go" class="btn" data-act="publish">Publier</button>
+  </div>`);
+  $("#p_file").addEventListener("change", checkVideo);
+}
+function checkVideo() {
+  const f = $("#p_file").files[0], msg = $("#p_msg"); pickedVideo = null; msg.textContent = "";
+  if (!f) return;
+  const v = document.createElement("video"); v.preload = "metadata";
+  v.onloadedmetadata = () => {
+    URL.revokeObjectURL(v.src);
+    if (v.duration < 2) msg.textContent = "La vidéo est trop courte (2 secondes minimum).";
+    else if (v.duration >= 1800) msg.textContent = "La vidéo est trop longue : l'application refuse à partir de 30 minutes.";
+    else pickedVideo = f;
+  };
+  v.onerror = () => { msg.textContent = "Impossible de lire cette vidéo."; };
+  v.src = URL.createObjectURL(f);
+}
+function uploadCloudinary(file, onProgress) {
+  return new Promise((resolve, reject) => {
+    const fd = new FormData(); fd.append("file", file); fd.append("upload_preset", PRESET);
+    const x = new XMLHttpRequest();
+    x.open("POST", `https://api.cloudinary.com/v1_1/${CLOUD}/video/upload`);
+    x.upload.onprogress = e => { if (e.lengthComputable) onProgress(e.loaded / e.total); };
+    x.onload = () => { try { const j = JSON.parse(x.responseText); j.secure_url ? resolve(j.secure_url) : reject(new Error(j.error?.message || "Échec de l'envoi")); } catch (e) { reject(e); } };
+    x.onerror = () => reject(new Error("Pas de connexion internet"));
+    x.send(fd);
+  });
+}
+async function publish() {
+  const msg = $("#p_msg"), btn = $("#p_go"), bar = $("#p_bar");
+  if (!pickedVideo) { msg.textContent = msg.textContent || "Choisis d'abord une vidéo."; return; }
+  const desc = $("#p_desc").value.trim(), presenter = $("#p_presenter").value.trim(), music = $("#p_music").value.trim();
+  if (!desc) { msg.textContent = "Écris une description."; return; }
+  btn.disabled = true; msg.textContent = ""; bar.hidden = false;
+  try {
+    const url = await uploadCloudinary(pickedVideo, r => bar.firstElementChild.style.width = Math.round(r * 100) + "%");
+    const hashtags = [...new Set((desc.toLowerCase().match(/#[\p{L}\p{N}_]+/gu) || []))];
+    await addDoc(collection(db, "posts"), {
+      uid: me.uid, username: meDoc.username, presenter, description: desc, music, videoURL: url, hashtags,
+      searchText: [desc, presenter, music, meDoc.username].join(" ").toLowerCase(),
+      likesCount: 0, commentsCount: 0, views: 0, createdAt: serverTimestamp()
+    });
+    toast("Vidéo publiée !"); feedMode = "pour"; go("home");
+  } catch (e) { msg.textContent = "Erreur : " + (e.message || e.code); btn.disabled = false; bar.hidden = true; }
+}
+
+/* ---------- PROFIL ---------- */
+async function renderProfile(uid) {
+  setScreen(`<div class="pad muted">Chargement…</div>`);
+  const own = uid === me.uid;
+  try {
+    const us = await getDoc(doc(db, "users", uid));
+    if (!us.exists()) { setScreen(`<div class="pad err">Profil introuvable.</div>`); return; }
+    const u = us.data(); if (own) meDoc = u;
+    const ps = await getDocs(query(collection(db, "posts"), where("uid", "==", uid)));
+    const list = ps.docs.map(d => ({ id: d.id, ...d.data() })).sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0));
+    const totalViews = list.reduce((s, p) => s + (p.views || 0), 0);
+    let gains = "";
+    if (own) {
+      const ws = await getDocs(query(collection(db, "withdrawals"), where("uid", "==", uid)));
+      const wl = ws.docs.map(d => ({ id: d.id, ...d.data() })).sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0));
+      const earned = Math.floor(totalViews * GAIN_PAR_1000_VUES / 1000);
+      const asked = wl.filter(w => w.status !== "Refusé").reduce((s, w) => s + (w.amount || 0), 0);
+      const solde = Math.max(0, earned - asked);
+      window.__solde = solde;
+      const cls = s => s === "Payé" ? "pay" : s === "Refusé" ? "ref" : "att";
+      gains = `<div class="card">
+        <b>Mes gains (estimation)</b>
+        <div class="muted" style="margin:4px 0 10px">Calcul de test : ${GAIN_PAR_1000_VUES} FCFA pour 1 000 vues. Ce n'est pas un vrai paiement automatique.</div>
+        <div class="stats"><div><b>${fmt(totalViews)}</b><span class="muted">vues</span></div><div><b>${fmt(earned)}</b><span class="muted">FCFA gagnés</span></div><div><b>${fmt(solde)}</b><span class="muted">FCFA disponibles</span></div></div>
+        <button class="btn" data-act="withdraw" ${solde < MIN_RETRAIT ? "disabled" : ""}>Retirer</button>
+        ${solde < MIN_RETRAIT ? `<div class="muted" style="margin-top:6px">Retrait possible à partir de ${fmt(MIN_RETRAIT)} FCFA.</div>` : ""}
+        ${wl.length ? `<h4 style="margin:16px 0 4px">Mes demandes de retrait</h4>` + wl.map(w => `<div class="cm">${fmt(w.amount)} FCFA · ${esc(w.method)} · ${esc(w.phone)}<br><span class="tag ${cls(w.status)}">${esc(w.status)}</span> <span class="muted">${w.createdAt ? w.createdAt.toDate().toLocaleDateString("fr-FR") : ""}</span></div>`).join("") : ""}
+      </div>`;
+    }
+    setScreen(`<div class="pad">
+      <div class="row" style="flex-direction:column;text-align:center;margin-top:8px">
+        ${avatar(u, true)}
+        <h2 style="margin:6px 0 0">@${esc(u.username)}</h2>
+        <div class="muted">${esc(u.bio || "")}</div>
+      </div>
+      <div class="stats">
+        <div><b>${list.length}</b><span class="muted">Vidéos</span></div>
+        <div><b>${u.followersCount || 0}</b><span class="muted">Abonnés</span></div>
+        <div><b>${u.followingCount || 0}</b><span class="muted">Abonnements</span></div>
+        <div><b>${fmt(totalViews)}</b><span class="muted">Vues</span></div>
+      </div>
+      ${own ? `<button class="btn alt" data-act="editprofile">Modifier mon profil</button>` : `<div style="text-align:center">${followBtn(uid).replace("small", "")}</div>`}
+      ${gains}
+      <h3>${own ? "Mes vidéos" : "Ses vidéos"}</h3>
+      ${list.length ? list.map(p => videoCard(p, own)).join("") : '<div class="muted">Aucune vidéo.</div>'}
+      ${own ? `<button class="btn alt" style="margin:24px 0" data-act="logout">Se déconnecter</button>` : ""}
+    </div>`);
+  } catch (e) { setScreen(`<div class="pad err">Erreur : ${esc(e.code || e.message)}</div>`); }
+}
+function resizePhoto(file, max = 256) {
+  return new Promise((res, rej) => {
+    const img = new Image();
+    img.onload = () => {
+      const r = Math.min(1, max / Math.max(img.width, img.height));
+      const c = document.createElement("canvas"); c.width = Math.round(img.width * r); c.height = Math.round(img.height * r);
+      c.getContext("2d").drawImage(img, 0, 0, c.width, c.height);
+      URL.revokeObjectURL(img.src); res(c.toDataURL("image/jpeg", 0.8));
+    };
+    img.onerror = rej; img.src = URL.createObjectURL(file);
+  });
+}
+function editProfile() {
+  openModal(`<h3>Modifier mon profil</h3>
+    <input id="e_name" value="${esc(meDoc.username)}" placeholder="Nom d'utilisateur" maxlength="30">
+    <textarea id="e_bio" rows="3" placeholder="Description" maxlength="150">${esc(meDoc.bio || "")}</textarea>
+    <div class="muted">Photo de profil (depuis ta galerie)</div>
+    <input id="e_photo" type="file" accept="image/*">
+    <div id="e_msg" class="err"></div>
+    <button class="btn" data-act="saveprofile">Enregistrer</button>
+    <button class="btn alt" data-act="close">Annuler</button>`);
+}
+async function saveProfile() {
+  const name = $("#e_name").value.trim(), bio = $("#e_bio").value.trim(), f = $("#e_photo").files[0];
+  if (name.length < 2) { $("#e_msg").textContent = "Le nom doit avoir 2 lettres minimum."; return; }
+  try {
+    const data = { username: name, usernameLower: name.toLowerCase(), bio };
+    if (f) data.photoURL = await resizePhoto(f);
+    await updateDoc(doc(db, "users", me.uid), data);
+    meDoc = { ...meDoc, ...data }; closeModal(); toast("Profil enregistré"); renderProfile(me.uid);
+  } catch (e) { $("#e_msg").textContent = "Erreur : " + (e.code || e.message); }
+}
+
+/* ---------- RETRAIT D'ARGENT ---------- */
+function openWithdraw() {
+  const solde = window.__solde || 0;
+  openModal(`<h3>Retirer de l'argent</h3>
+    <div class="muted">Disponible : <b>${fmt(solde)} FCFA</b> (minimum ${fmt(MIN_RETRAIT)} FCFA)</div>
+    <select id="w_method"><option>Orange Money</option><option>Wave</option></select>
+    <input id="w_phone" type="tel" inputmode="tel" placeholder="Ton numéro (ex : 07 00 00 00 00)">
+    <input id="w_amount" type="number" inputmode="numeric" placeholder="Montant en FCFA">
+    <div class="muted">Ta demande sera « En attente ». Le paiement est fait à la main par le propriétaire de l'application.</div>
+    <div id="w_msg" class="err"></div>
+    <button class="btn" data-act="sendwithdraw">Envoyer ma demande</button>
+    <button class="btn alt" data-act="close">Annuler</button>`);
+}
+async function sendWithdraw() {
+  const method = $("#w_method").value, phone = $("#w_phone").value.replace(/[^\d+]/g, ""), amount = Math.floor(+$("#w_amount").value), msg = $("#w_msg");
+  const solde = window.__solde || 0;
+  if (phone.replace(/\D/g, "").length < 8) { msg.textContent = "Écris ton numéro de téléphone."; return; }
+  if (!amount || amount < MIN_RETRAIT) { msg.textContent = `Le montant minimum est ${fmt(MIN_RETRAIT)} FCFA.`; return; }
+  if (amount > solde) { msg.textContent = `Tu ne peux pas retirer plus de ${fmt(solde)} FCFA.`; return; }
+  try {
+    await addDoc(collection(db, "withdrawals"), { uid: me.uid, username: meDoc.username, method, phone, amount, status: "En attente", createdAt: serverTimestamp() });
+    closeModal(); toast("Demande envoyée (En attente)"); renderProfile(me.uid);
+  } catch (e) { msg.textContent = "Erreur : " + (e.code || e.message); }
+}
+
+/* ---------- CLICS ---------- */
+document.addEventListener("click", e => {
+  const t = e.target.closest("[data-act]"); if (!t) return;
+  if (t.dataset.act === "close" && e.target.closest("[data-stop]") && !e.target.closest("button")) return;
+  const id = t.dataset.id, uid = t.dataset.uid;
+  switch (t.dataset.act) {
+    case "go": go(t.dataset.tab); break;
+    case "authmode": showAuth(t.dataset.mode); break;
+    case "login": doLogin(); break;
+    case "signup": doSignup(); break;
+    case "logout": signOut(auth); break;
+    case "feedmode": feedMode = t.dataset.mode; renderHome(); break;
+    case "sound": soundOn = !soundOn; document.querySelectorAll(".post video").forEach(v => v.muted = !soundOn); toast(soundOn ? "Son activé" : "Son coupé"); break;
+    case "like": toggleLike(id, t); break;
+    case "comments": openComments(id); break;
+    case "sendcomment": sendComment(id); break;
+    case "share": sharePost(id); break;
+    case "follow": toggleFollow(uid); break;
+    case "user": renderProfile(uid); break;
+    case "publish": publish(); break;
+    case "editprofile": editProfile(); break;
+    case "saveprofile": saveProfile(); break;
+    case "withdraw": openWithdraw(); break;
+    case "sendwithdraw": sendWithdraw(); break;
+    case "delpost":
+      if (confirm("Supprimer cette vidéo ?")) deleteDoc(doc(db, "posts", id)).then(() => { toast("Vidéo supprimée"); renderProfile(me.uid); }).catch(er => toast("Erreur : " + er.code));
+      break;
+    case "close": closeModal(); break;
+  }
+});
+</script>
+</body>
+</html>
