@@ -1,0 +1,589 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Ma Vie</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+html,body{height:100%;background:#000;color:#fff;font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;overflow:hidden}
+button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
+input,textarea{font:inherit;color:#fff;background:#111;border:1px solid #333;border-radius:12px;padding:12px;width:100%;outline:0}
+input:focus,textarea:focus{border-color:#fff}
+textarea{resize:none;min-height:80px}
+.hide{display:none!important}
+.btn{background:#fff;color:#000;font-weight:700;border-radius:12px;padding:12px 18px;text-align:center}
+.btn.ghost{background:#111;color:#fff;border:1px solid #333}
+.btn:disabled{opacity:.35}
+.sm{font-size:13px;color:#aaa}
+.empty{padding:40px 20px;text-align:center;color:#888}
+h3{margin:4px 0 12px}
+/* auth */
+#auth{position:fixed;inset:0;display:flex;flex-direction:column;justify-content:center;gap:12px;padding:28px;max-width:420px;margin:0 auto}
+.logo{font-size:44px;font-weight:900;letter-spacing:4px;text-align:center;margin-bottom:6px}
+.err{color:#ff6b6b;font-size:14px;min-height:18px;text-align:center}
+.link{color:#fff;text-decoration:underline;text-align:center;font-size:14px}
+/* main */
+#main{position:fixed;inset:0;display:flex;flex-direction:column}
+#views{flex:1;position:relative;min-height:0}
+.view{position:absolute;inset:0;overflow-y:auto;display:none}
+.view.on{display:block}
+#tabs{display:flex;height:58px;background:#000;border-top:1px solid #222;padding-bottom:env(safe-area-inset-bottom)}
+#tabs button{flex:1;font-size:12px;color:#888;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px}
+#tabs button span{font-size:20px}
+#tabs button.on{color:#fff}
+#tabs .plus span{background:#fff;color:#000;border-radius:10px;padding:0 14px;font-weight:900;font-size:22px;line-height:28px}
+/* feed */
+#v-home{overflow:hidden}
+#feed{height:100%;overflow-y:scroll;scroll-snap-type:y mandatory}
+.post{height:100%;scroll-snap-align:start;scroll-snap-stop:always;position:relative;background:#000}
+.post video{width:100%;height:100%;object-fit:contain;background:#000}
+.info{position:absolute;left:12px;right:84px;bottom:18px;text-shadow:0 1px 4px #000}
+.info .u{font-weight:800;font-size:16px;margin-right:8px}
+.info .f{border:1px solid #fff;border-radius:8px;padding:2px 10px;font-size:13px}
+.info .f.on{background:#fff;color:#000}
+.info p{margin-top:6px;font-size:14px;word-break:break-word}
+.info .vw{font-size:12px;color:#ccc;margin-top:4px}
+.side{position:absolute;right:8px;bottom:24px;display:flex;flex-direction:column;gap:14px;align-items:center}
+.side button{display:flex;flex-direction:column;align-items:center;font-size:12px;text-shadow:0 1px 4px #000}
+.side button span{font-size:28px}
+#top{position:absolute;top:0;left:0;right:0;z-index:5;display:flex;justify-content:center;gap:22px;padding:14px;background:linear-gradient(#000a,#0000)}
+#top button{font-weight:700;color:#aaa;font-size:16px;padding-bottom:3px}
+#top button.on{color:#fff;border-bottom:2px solid #fff}
+/* profile */
+.pwrap{padding:18px 16px 30px;max-width:640px;margin:0 auto}
+.head{display:flex;flex-direction:column;align-items:center;gap:8px;text-align:center}
+.av{width:92px;height:92px;border-radius:50%;object-fit:cover;background:#222;display:flex;align-items:center;justify-content:center;font-size:36px;font-weight:800}
+.av.s{width:44px;height:44px;font-size:18px;flex:none}
+.stats{display:flex;justify-content:center;gap:22px;margin:14px 0}
+.stats div{text-align:center}.stats b{display:block;font-size:18px}
+.card{background:#111;border:1px solid #2a2a2a;border-radius:16px;padding:14px;margin:14px 0}
+.card .big{font-size:30px;font-weight:900;margin:4px 0}
+.vrow{display:flex;gap:10px;background:#111;border-radius:14px;padding:8px;margin:8px 0;align-items:flex-start}
+.vrow video{width:110px;height:150px;object-fit:cover;border-radius:10px;background:#000;flex:none}
+.vrow .t{flex:1;min-width:0;display:flex;flex-direction:column;gap:6px;word-break:break-word}
+.red{color:#ff6b6b}
+.row{display:flex;gap:8px;align-items:center}
+.urow{display:flex;gap:12px;align-items:center;padding:10px 4px;border-bottom:1px solid #1c1c1c}
+.tag{display:inline-block;border-radius:8px;padding:2px 8px;font-size:12px;background:#222}
+.tag.ok{background:#fff;color:#000}
+/* other + sheet */
+#other{position:fixed;inset:0;background:#000;z-index:20;overflow-y:auto}
+#back{position:sticky;top:0;background:#000;padding:12px 16px;font-size:16px;font-weight:700;z-index:2;display:block;width:100%;text-align:left;border-bottom:1px solid #222}
+#sheet{position:fixed;inset:0;background:#000b;z-index:30;display:none;align-items:flex-end}
+#sheet.open{display:flex}
+#panel{background:#111;width:100%;max-width:640px;margin:0 auto;border-radius:20px 20px 0 0;max-height:88%;overflow-y:auto;padding:16px 16px calc(16px + env(safe-area-inset-bottom))}
+.opt{display:block;width:100%;text-align:left;background:#1b1b1b;border-radius:12px;padding:14px;margin:8px 0;font-size:15px}
+.opt.on{background:#fff;color:#000;font-weight:700}
+.cm{padding:8px 0;border-bottom:1px solid #222;font-size:14px;word-break:break-word}
+.x{color:#888;margin-left:8px}
+.clist{max-height:45vh;overflow-y:auto;margin-bottom:10px}
+.bar{height:8px;background:#222;border-radius:8px;overflow:hidden;margin:10px 0}
+.bar i{display:block;height:100%;width:0;background:#fff}
+#toast{position:fixed;left:50%;bottom:90px;transform:translateX(-50%);background:#fff;color:#000;padding:10px 16px;border-radius:12px;font-weight:600;font-size:14px;z-index:50;opacity:0;pointer-events:none;transition:.25s;max-width:88%;text-align:center}
+#toast.show{opacity:1}
+</style>
+</head>
+<body>
+
+<div id="loading" class="logo" style="position:fixed;inset:0;display:flex;align-items:center;justify-content:center">MA VIE</div>
+
+<div id="auth" class="hide">
+  <div class="logo">MA VIE</div>
+  <input id="aName" placeholder="Nom d'utilisateur" maxlength="24" class="hide">
+  <input id="aMail" type="email" placeholder="Adresse e-mail" autocomplete="email">
+  <input id="aPass" type="password" placeholder="Mot de passe (6 caractères minimum)" autocomplete="current-password">
+  <div class="err" id="aErr"></div>
+  <button class="btn" id="aGo">Se connecter</button>
+  <button class="link" id="aSwitch">Pas de compte ? Créer un compte</button>
+</div>
+
+<div id="main" class="hide">
+  <div id="views">
+    <div class="view on" id="v-home">
+      <div id="top"><button id="mFollow">Abonnements</button><button id="mFor" class="on">Pour toi</button></div>
+      <div id="feed"></div>
+    </div>
+    <div class="view" id="v-search">
+      <div class="pwrap">
+        <input id="sq" placeholder="Chercher un créateur, un mot ou un #hashtag" autocomplete="off">
+        <div id="sres"><div class="empty">Cherche un créateur, un mot ou un #hashtag</div></div>
+      </div>
+    </div>
+    <div class="view" id="v-profile"></div>
+  </div>
+  <div id="tabs">
+    <button data-t="home" class="on"><span>🏠</span>Accueil</button>
+    <button data-t="search"><span>🔍</span>Recherche</button>
+    <button data-t="add" class="plus"><span>+</span>Publier</button>
+    <button data-t="profile"><span>👤</span>Profil</button>
+  </div>
+</div>
+
+<div id="other" class="hide"></div>
+<div id="sheet"><div id="panel"></div></div>
+<div id="toast"></div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import { getAuth, onAuthStateChanged, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+import { getFirestore, collection, doc, getDoc, getDocs, setDoc, addDoc, updateDoc, deleteDoc, query, where, limit, serverTimestamp, increment } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyDt_UcyL9pXwvfE-5NpOozMykCJh7zvvrs",
+  authDomain: "ma-vie-2b252.firebaseapp.com",
+  projectId: "ma-vie-2b252",
+  storageBucket: "ma-vie-2b252.firebasestorage.app",
+  messagingSenderId: "235933753646",
+  appId: "1:235933753646:web:91df8965e68affbf3f9abf"
+};
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db = getFirestore(app);
+
+const CLOUD = "gevaxyli", PRESET = "mavie_videos";
+const RATE = 100, PER = 1000, MIN_WD = 500;
+const REASONS = ["Violence ou danger","Contenu sexuel ou inapproprié","Harcèlement ou haine","Arnaque ou faux compte","Spam ou publicité","Autre"];
+
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+function toast(m){ const t=$("#toast"); t.textContent=m; t.classList.add("show"); clearTimeout(toast.t); toast.t=setTimeout(()=>t.classList.remove("show"),3000); }
+
+let me = null, meDoc = null, pendingName = "";
+let feedMode = "for", followingSet = new Set(), io = null;
+let hidden = new Set();
+try { hidden = new Set(JSON.parse(localStorage.getItem("mv_hidden") || "[]")); } catch(e) {}
+const seen = new Set();
+
+/* ---------- Connexion ---------- */
+let signup = false;
+function setMode(s){
+  signup = s;
+  $("#aName").classList.toggle("hide", !s);
+  $("#aGo").textContent = s ? "Créer mon compte" : "Se connecter";
+  $("#aSwitch").textContent = s ? "Déjà un compte ? Se connecter" : "Pas de compte ? Créer un compte";
+  $("#aErr").textContent = "";
+}
+$("#aSwitch").onclick = () => setMode(!signup);
+function authMsg(e){
+  const c = e.code || "";
+  if (c.includes("invalid-email")) return "Adresse e-mail invalide.";
+  if (c.includes("email-already")) return "Cet e-mail est déjà utilisé.";
+  if (c.includes("weak-password")) return "Mot de passe trop court (6 caractères minimum).";
+  if (c.includes("invalid-credential") || c.includes("wrong-password") || c.includes("user-not-found")) return "E-mail ou mot de passe incorrect.";
+  if (c.includes("network")) return "Pas de connexion internet.";
+  return "Erreur : " + (e.message || c);
+}
+$("#aGo").onclick = async () => {
+  const mail = $("#aMail").value.trim(), pass = $("#aPass").value;
+  $("#aErr").textContent = "";
+  if (!mail || !pass) { $("#aErr").textContent = "Écris ton e-mail et ton mot de passe."; return; }
+  $("#aGo").disabled = true;
+  try {
+    if (signup) { pendingName = $("#aName").value.trim(); await createUserWithEmailAndPassword(auth, mail, pass); }
+    else await signInWithEmailAndPassword(auth, mail, pass);
+  } catch(e) { $("#aErr").textContent = authMsg(e); }
+  $("#aGo").disabled = false;
+};
+
+onAuthStateChanged(auth, async user => {
+  $("#loading").classList.add("hide");
+  if (!user) {
+    me = null; meDoc = null;
+    $("#main").classList.add("hide"); $("#auth").classList.remove("hide");
+    return;
+  }
+  me = user;
+  try {
+    const r = doc(db, "users", user.uid);
+    let s = await getDoc(r);
+    if (!s.exists()) {
+      const name = pendingName || (user.email || "createur").split("@")[0];
+      await setDoc(r, { username: name, photoURL: "", bio: "", createdAt: serverTimestamp() });
+      s = await getDoc(r);
+    }
+    meDoc = s.data();
+  } catch(e) { meDoc = { username: (user.email || "").split("@")[0], photoURL: "", bio: "" }; toast("Profil non lu : " + e.message); }
+  $("#auth").classList.add("hide"); $("#main").classList.remove("hide");
+  goTab("home");
+});
+
+/* ---------- Données ---------- */
+function norm(d){
+  const p = { id: d.id, ...d.data() };
+  p.uid = p.uid || p.userId || p.authorId || "";
+  p.url = p.videoUrl || p.url || "";
+  p.caption = p.desc ?? p.caption ?? "";
+  p.username = p.username || p.user || p.author || "créateur";
+  return p;
+}
+const ts = p => (p.createdAt && p.createdAt.seconds) || 0;
+async function getAllPosts(){
+  const s = await getDocs(query(collection(db, "posts"), limit(200)));
+  return s.docs.map(norm).sort((a,b) => ts(b) - ts(a));
+}
+function likesOf(p){ return (typeof p.likes === "number" ? p.likes : 0) + (p.likesCount || 0); }
+function avatar(u, cls=""){
+  return u && u.photoURL ? `<img class="av ${cls}" src="${esc(u.photoURL)}" alt="">`
+    : `<div class="av ${cls}">${esc(((u && u.username) || "?").charAt(0).toUpperCase())}</div>`;
+}
+
+/* ---------- Navigation ---------- */
+function goTab(t){
+  if (t === "add") { openPublish(); return; }
+  document.querySelectorAll("#tabs button").forEach(b => b.classList.toggle("on", b.dataset.t === t));
+  document.querySelectorAll(".view").forEach(v => v.classList.remove("on"));
+  $("#v-" + t).classList.add("on");
+  if (t !== "home") document.querySelectorAll("#feed video").forEach(v => v.pause());
+  if (t === "home") loadFeed();
+  if (t === "profile") renderProfile(me.uid, $("#v-profile"), true);
+  if (t === "search") $("#sq").focus();
+}
+document.querySelectorAll("#tabs button").forEach(b => b.onclick = () => goTab(b.dataset.t));
+$("#mFor").onclick = () => { feedMode = "for"; $("#mFor").classList.add("on"); $("#mFollow").classList.remove("on"); loadFeed(); };
+$("#mFollow").onclick = () => { feedMode = "follow"; $("#mFollow").classList.add("on"); $("#mFor").classList.remove("on"); loadFeed(); };
+
+/* ---------- Sheet ---------- */
+function openSheet(html){ $("#panel").innerHTML = html; $("#sheet").classList.add("open"); }
+function closeSheet(){ $("#sheet").classList.remove("open"); $("#panel").innerHTML = ""; }
+$("#sheet").onclick = e => { if (e.target.id === "sheet") closeSheet(); };
+
+/* ---------- Fil de vidéos ---------- */
+async function loadFeed(){
+  const box = $("#feed");
+  box.innerHTML = '<div class="empty">Chargement…</div>';
+  try {
+    const fs = await getDocs(collection(db, "users", me.uid, "following"));
+    followingSet = new Set(fs.docs.map(d => d.id));
+    let posts = await getAllPosts();
+    posts = posts.filter(p => p.url && !hidden.has(p.id));
+    if (feedMode === "follow") {
+      if (!followingSet.size) { box.innerHTML = '<div class="empty" style="padding-top:35vh">Vous ne suivez encore personne.<br>Appuie sur « Suivre » sous une vidéo.</div>'; return; }
+      posts = posts.filter(p => followingSet.has(p.uid));
+    }
+    if (!posts.length) { box.innerHTML = '<div class="empty" style="padding-top:35vh">Aucune vidéo pour le moment.<br>Appuie sur « + » pour publier la première !</div>'; return; }
+    box.innerHTML = posts.map(cardHTML).join("");
+    setupObserver();
+    posts.forEach(async p => {
+      try {
+        const l = await getDoc(doc(db, "posts", p.id, "likes", me.uid));
+        if (l.exists()) { const b = box.querySelector(`.post[data-id="${p.id}"] [data-act="like"] span`); if (b) b.textContent = "❤️"; }
+      } catch(e) {}
+    });
+  } catch(e) { box.innerHTML = '<div class="empty" style="padding-top:35vh">Erreur : ' + esc(e.message) + '</div>'; }
+}
+function cardHTML(p){
+  const mine = p.uid === me.uid;
+  const f = mine || !p.uid ? "" : `<button class="f ${followingSet.has(p.uid)?"on":""}" data-act="follow" data-uid="${esc(p.uid)}">${followingSet.has(p.uid)?"Abonné":"Suivre"}</button>`;
+  return `<section class="post" data-id="${p.id}" data-uid="${esc(p.uid)}">
+    <video src="${esc(p.url)}" loop playsinline preload="metadata"></video>
+    <div class="info"><button class="u" data-act="profile" data-uid="${esc(p.uid)}">@${esc(p.username)}</button>${f}
+      <p>${esc(p.caption)}</p><div class="vw">👁 <span class="vcount">${Number(p.views)||0}</span> vues</div></div>
+    <div class="side">
+      <button data-act="like"><span>🤍</span><b class="lc">${likesOf(p)}</b></button>
+      <button data-act="comment"><span>💬</span><b class="cc">${p.commentsCount||0}</b></button>
+      <button data-act="share"><span>↗️</span>Partager</button>
+      ${mine ? "" : '<button data-act="report"><span>🚩</span>Signaler</button>'}
+    </div></section>`;
+}
+function setupObserver(){
+  if (io) io.disconnect();
+  io = new IntersectionObserver(es => es.forEach(e => {
+    const v = e.target.querySelector("video");
+    if (e.isIntersecting && e.intersectionRatio >= 0.6) { play(v); countView(e.target.dataset.id, e.target.dataset.uid); }
+    else v.pause();
+  }), { root: $("#feed"), threshold: [0, 0.6] });
+  document.querySelectorAll("#feed .post").forEach(p => io.observe(p));
+}
+function play(v){ v.muted = false; v.play().catch(() => { v.muted = true; v.play().catch(() => {}); }); }
+async function countView(id, ownerUid){
+  if (!me || ownerUid === me.uid || seen.has(id)) return;
+  seen.add(id);
+  try {
+    const r = doc(db, "posts", id, "viewers", me.uid);
+    if ((await getDoc(r)).exists()) return;
+    await setDoc(r, { at: serverTimestamp() });
+    await updateDoc(doc(db, "posts", id), { views: increment(1) });
+    const el = document.querySelector(`.post[data-id="${id}"] .vcount`);
+    if (el) el.textContent = (parseInt(el.textContent) || 0) + 1;
+  } catch(e) {}
+}
+$("#feed").onclick = async e => {
+  const post = e.target.closest(".post"); if (!post) return;
+  const btn = e.target.closest("[data-act]");
+  const id = post.dataset.id;
+  if (!btn) { const v = post.querySelector("video"); v.paused ? play(v) : v.pause(); return; }
+  const act = btn.dataset.act;
+  if (act === "profile" && btn.dataset.uid) openOther(btn.dataset.uid);
+  if (act === "follow") { await toggleFollow(btn.dataset.uid); document.querySelectorAll(`#feed [data-act="follow"][data-uid="${btn.dataset.uid}"]`).forEach(b => { const on = followingSet.has(btn.dataset.uid); b.textContent = on ? "Abonné" : "Suivre"; b.classList.toggle("on", on); }); }
+  if (act === "like") toggleLike(id, post);
+  if (act === "comment") openComments(id, post);
+  if (act === "share") share(post.querySelector(".info p").textContent);
+  if (act === "report") openReport(id, post.dataset.uid, post);
+};
+async function toggleFollow(uid){
+  if (!uid || uid === me.uid) return;
+  const a = doc(db, "users", me.uid, "following", uid), b = doc(db, "users", uid, "followers", me.uid);
+  try {
+    if (followingSet.has(uid)) { await deleteDoc(a); await deleteDoc(b); followingSet.delete(uid); }
+    else { await setDoc(a, { at: serverTimestamp() }); await setDoc(b, { at: serverTimestamp() }); followingSet.add(uid); }
+  } catch(e) { toast("Erreur : " + e.message); }
+}
+async function toggleLike(id, post){
+  const r = doc(db, "posts", id, "likes", me.uid);
+  const ic = post.querySelector('[data-act="like"] span'), n = post.querySelector(".lc");
+  try {
+    const had = (await getDoc(r)).exists();
+    if (had) { await deleteDoc(r); await updateDoc(doc(db, "posts", id), { likesCount: increment(-1) }); ic.textContent = "🤍"; n.textContent = Math.max(0, (parseInt(n.textContent)||0) - 1); }
+    else { await setDoc(r, { at: serverTimestamp() }); await updateDoc(doc(db, "posts", id), { likesCount: increment(1) }); ic.textContent = "❤️"; n.textContent = (parseInt(n.textContent)||0) + 1; }
+  } catch(e) { toast("Erreur : " + e.message); }
+}
+function share(text){
+  const url = location.href.split("#")[0];
+  if (navigator.share) navigator.share({ title: "Ma Vie", text: text || "Regarde cette vidéo sur Ma Vie", url }).catch(() => {});
+  else if (navigator.clipboard) navigator.clipboard.writeText(url).then(() => toast("Lien copié"));
+}
+
+/* ---------- Commentaires ---------- */
+function openComments(id, post){
+  openSheet(`<h3>Commentaires</h3><div class="clist" id="cl"><div class="empty">Chargement…</div></div>
+    <div class="row"><input id="ci" placeholder="Écrire un commentaire…" maxlength="300"><button class="btn" id="cs">Envoyer</button></div>`);
+  const upd = n => { const c = post && post.querySelector(".cc"); if (c) c.textContent = n; };
+  const load = async () => {
+    try {
+      const s = await getDocs(collection(db, "posts", id, "comments"));
+      const arr = s.docs.map(d => ({ id: d.id, ...d.data() })).sort((a,b) => ts(a) - ts(b));
+      upd(arr.length);
+      $("#cl").innerHTML = arr.length ? arr.map(c => `<div class="cm"><b>@${esc(c.username||"")}</b> ${esc(c.text||"")}${c.uid===me.uid?`<button class="x" data-del="${c.id}">✕</button>`:""}</div>`).join("") : '<div class="empty">Aucun commentaire. Sois le premier !</div>';
+    } catch(e) { $("#cl").innerHTML = '<div class="empty">Erreur : ' + esc(e.message) + '</div>'; }
+  };
+  load();
+  $("#cs").onclick = async () => {
+    const t = $("#ci").value.trim(); if (!t) return;
+    $("#cs").disabled = true;
+    try {
+      await addDoc(collection(db, "posts", id, "comments"), { uid: me.uid, username: meDoc.username, text: t, createdAt: serverTimestamp() });
+      await updateDoc(doc(db, "posts", id), { commentsCount: increment(1) });
+      $("#ci").value = ""; await load();
+    } catch(e) { toast("Erreur : " + e.message); }
+    $("#cs").disabled = false;
+  };
+  $("#cl").onclick = async e => {
+    const d = e.target.closest("[data-del]"); if (!d) return;
+    try { await deleteDoc(doc(db, "posts", id, "comments", d.dataset.del)); await updateDoc(doc(db, "posts", id), { commentsCount: increment(-1) }); await load(); }
+    catch(err) { toast("Erreur : " + err.message); }
+  };
+}
+
+/* ---------- Signaler une vidéo ---------- */
+function openReport(id, ownerUid, post){
+  openSheet(`<h3>Signaler cette vidéo</h3><p class="sm">Pourquoi veux-tu la signaler ? Appuie sur un choix.</p>
+    ${REASONS.map((r,i) => `<button class="opt" data-r="${i}">${i+1}. ${esc(r)}</button>`).join("")}
+    <button class="btn ghost" style="width:100%;margin-top:6px" id="rc">Annuler</button>`);
+  $("#rc").onclick = closeSheet;
+  $("#panel").onclick = async e => {
+    const b = e.target.closest("[data-r]"); if (!b) return;
+    const reason = REASONS[+b.dataset.r];
+    document.querySelectorAll("#panel .opt").forEach(x => x.disabled = true);
+    let msg = "Merci, vidéo signalée. Elle est masquée pour toi.";
+    try {
+      await setDoc(doc(db, "reports", id + "_" + me.uid), { postId: id, postOwnerUid: ownerUid || "", reporterUid: me.uid, reason, status: "Nouveau", createdAt: serverTimestamp() });
+    } catch(err) {
+      if ((err.code || "").includes("permission")) msg = "Tu as déjà signalé cette vidéo. Elle est masquée pour toi.";
+      else { toast("Erreur : " + err.message); closeSheet(); return; }
+    }
+    hidden.add(id);
+    try { localStorage.setItem("mv_hidden", JSON.stringify([...hidden])); } catch(e) {}
+    closeSheet();
+    if (post) post.remove();
+    toast(msg);
+  };
+}
+
+/* ---------- Publier ---------- */
+function openPublish(){
+  openSheet(`<h3>Publier une vidéo</h3>
+    <button class="btn ghost" style="width:100%" id="pPick">📱 Choisir une vidéo du téléphone</button>
+    <input type="file" id="pFile" accept="video/*" class="hide">
+    <p class="sm" id="pName" style="margin:8px 0">Aucune vidéo choisie (2 secondes à moins de 30 minutes)</p>
+    <textarea id="pCap" maxlength="300" placeholder="Description avec #hashtags"></textarea>
+    <input id="pLink" placeholder="ou colle un lien .mp4" style="margin-top:8px">
+    <div class="bar hide" id="pBar"><i></i></div>
+    <button class="btn" style="width:100%;margin-top:10px" id="pGo">Publier</button>`);
+  $("#pPick").onclick = () => $("#pFile").click();
+  $("#pFile").onchange = () => { const f = $("#pFile").files[0]; $("#pName").textContent = f ? "✔ " + f.name : "Aucune vidéo choisie"; };
+  $("#pGo").onclick = async () => {
+    const f = $("#pFile").files[0], link = $("#pLink").value.trim(), cap = $("#pCap").value.trim();
+    if (!f && !/^https?:\/\//i.test(link)) { toast("Choisis une vidéo ou colle un lien."); return; }
+    $("#pGo").disabled = true;
+    try {
+      let url = link;
+      if (f) {
+        const d = await getDuration(f);
+        if (d < 2) throw new Error("Vidéo trop courte (2 secondes minimum).");
+        if (d >= 1800) throw new Error("Vidéo refusée : 30 minutes ou plus.");
+        $("#pBar").classList.remove("hide");
+        url = await uploadVideo(f, n => { $("#pBar i").style.width = n + "%"; $("#pGo").textContent = "Envoi… " + n + "%"; });
+      }
+      await addDoc(collection(db, "posts"), { uid: me.uid, username: meDoc.username, videoUrl: url, desc: cap, views: 0, likesCount: 0, commentsCount: 0, createdAt: serverTimestamp() });
+      closeSheet(); toast("Vidéo publiée !"); goTab("home");
+    } catch(e) { toast(e.message || "Erreur"); $("#pGo").disabled = false; $("#pGo").textContent = "Publier"; }
+  };
+}
+function getDuration(file){
+  return new Promise(res => {
+    const v = document.createElement("video"); v.preload = "metadata";
+    v.onloadedmetadata = () => { URL.revokeObjectURL(v.src); res(v.duration); };
+    v.onerror = () => res(10);
+    v.src = URL.createObjectURL(file);
+  });
+}
+function uploadVideo(file, onp){
+  return new Promise((res, rej) => {
+    const x = new XMLHttpRequest();
+    x.open("POST", `https://api.cloudinary.com/v1_1/${CLOUD}/video/upload`);
+    x.upload.onprogress = e => { if (e.lengthComputable) onp(Math.round(e.loaded / e.total * 100)); };
+    x.onload = () => { try { const j = JSON.parse(x.responseText); if (x.status < 300 && j.secure_url) res(j.secure_url); else rej(new Error((j.error && j.error.message) || "Envoi refusé")); } catch(e) { rej(e); } };
+    x.onerror = () => rej(new Error("Pas de connexion internet"));
+    const f = new FormData(); f.append("file", file); f.append("upload_preset", PRESET); x.send(f);
+  });
+}
+
+/* ---------- Profil ---------- */
+async function renderProfile(uid, el, isMe){
+  el.innerHTML = '<div class="empty">Chargement…</div>';
+  try {
+    const jobs = [getDoc(doc(db, "users", uid)), getAllPosts(), getDocs(collection(db, "users", uid, "followers")), getDocs(collection(db, "users", uid, "following"))];
+    if (isMe) jobs.push(getDocs(query(collection(db, "withdrawals"), where("uid", "==", uid))));
+    else jobs.push(getDoc(doc(db, "users", me.uid, "following", uid)));
+    const [us, all, fers, fing, extra] = await Promise.all(jobs);
+    const u = us.exists() ? us.data() : { username: "Utilisateur" };
+    const mine = all.filter(p => p.uid === uid);
+    const views = mine.reduce((s, p) => s + (Number(p.views) || 0), 0);
+    let top = "", wd = "";
+    if (isMe) {
+      meDoc = { ...meDoc, ...u };
+      const wds = extra.docs.map(d => ({ id: d.id, ...d.data() })).sort((a,b) => ts(b) - ts(a));
+      const used = wds.filter(w => w.status !== "Refusé").reduce((s, w) => s + (Number(w.amount) || 0), 0);
+      const bal = Math.max(0, Math.floor(views / PER * RATE) - used);
+      el._bal = bal;
+      top = `<div class="card"><div class="sm">Mes gains (estimation)</div><div class="big">${bal} FCFA</div>
+        <div class="sm">${views} vues · ${RATE} FCFA pour ${PER} vues (calcul de test)</div>
+        <button class="btn" id="btnWd" style="margin-top:10px;width:100%" ${bal < MIN_WD ? "disabled" : ""}>Retirer</button>
+        <div class="sm" style="margin-top:6px">Retrait possible à partir de ${MIN_WD} FCFA</div></div>`;
+      wd = wds.length ? `<h3 style="margin-top:18px">Mes demandes de retrait</h3>` + wds.map(w => `<div class="vrow" style="align-items:center"><div class="t"><b>${Number(w.amount)||0} FCFA</b><span class="sm">${esc(w.method||"")} · ${esc(w.phone||"")}</span></div><span class="tag ${w.status==="Payé"?"ok":""}">${esc(w.status||"En attente")}</span></div>`).join("") : "";
+    }
+    const followed = !isMe && extra.exists();
+    const actions = isMe
+      ? `<div class="row"><button class="btn ghost" id="btnEdit">Modifier mon profil</button><button class="btn ghost" id="btnOut">Déconnexion</button></div>`
+      : `<button class="btn ${followed?"ghost":""}" id="btnFol" data-uid="${esc(uid)}">${followed?"Abonné":"Suivre"}</button>`;
+    const vids = mine.length ? mine.map(p => `<div class="vrow"><video src="${esc(p.url)}" controls playsinline preload="metadata"></video>
+      <div class="t"><span>${esc(p.caption)}</span><span class="sm">👁 ${Number(p.views)||0} vues · ❤️ ${likesOf(p)}</span>
+      ${isMe ? `<button class="red" data-del="${p.id}" style="text-align:left">Supprimer</button>` : ""}</div></div>`).join("") : '<div class="empty">Aucune vidéo.</div>';
+    el.innerHTML = `<div class="pwrap"><div class="head">${avatar(u)}<b style="font-size:20px">@${esc(u.username)}</b>${u.bio ? `<div class="sm">${esc(u.bio)}</div>` : ""}</div>
+      <div class="stats"><div><b>${mine.length}</b>Vidéos</div><div><b>${fers.size}</b>Abonnés</div><div><b>${fing.size}</b>Abonnements</div><div><b>${views}</b>Vues</div></div>
+      ${actions}${top}${wd}<h3 style="margin-top:18px">${isMe ? "Mes vidéos" : "Vidéos"}</h3>${vids}</div>`;
+    if (isMe) {
+      $("#btnOut").onclick = () => signOut(auth);
+      $("#btnEdit").onclick = openEdit;
+      if ($("#btnWd")) $("#btnWd").onclick = () => openWithdraw(el._bal);
+    } else {
+      $("#btnFol").onclick = async () => { await toggleFollow(uid); renderProfile(uid, el, false); };
+    }
+    el.querySelectorAll("[data-del]").forEach(b => b.onclick = async () => {
+      if (!confirm("Supprimer cette vidéo ?")) return;
+      try { await deleteDoc(doc(db, "posts", b.dataset.del)); renderProfile(uid, el, isMe); } catch(e) { toast("Erreur : " + e.message); }
+    });
+  } catch(e) { el.innerHTML = '<div class="empty">Erreur : ' + esc(e.message) + '</div>'; }
+}
+function openOther(uid){
+  if (uid === me.uid) { goTab("profile"); return; }
+  document.querySelectorAll("#feed video").forEach(v => v.pause());
+  const o = $("#other");
+  o.classList.remove("hide");
+  o.innerHTML = '<button id="back">← Retour</button><div id="oc"></div>';
+  $("#back").onclick = () => { o.classList.add("hide"); o.innerHTML = ""; };
+  renderProfile(uid, $("#oc"), false);
+}
+
+/* ---------- Modifier le profil ---------- */
+function openEdit(){
+  let photo = meDoc.photoURL || "";
+  openSheet(`<h3>Modifier mon profil</h3>
+    <div class="head" style="margin-bottom:10px"><div id="ePh">${avatar({ photoURL: photo, username: meDoc.username })}</div>
+    <button class="btn ghost" id="ePick">📷 Choisir une photo du téléphone</button><input type="file" id="eFile" accept="image/*" class="hide"></div>
+    <input id="eName" maxlength="24" placeholder="Nom d'utilisateur" value="${esc(meDoc.username)}">
+    <textarea id="eBio" maxlength="150" placeholder="Description" style="margin-top:8px">${esc(meDoc.bio || "")}</textarea>
+    <button class="btn" style="width:100%;margin-top:10px" id="eSave">Enregistrer</button>`);
+  $("#ePick").onclick = () => $("#eFile").click();
+  $("#eFile").onchange = async () => {
+    const f = $("#eFile").files[0]; if (!f) return;
+    try { photo = await resizeImg(f); $("#ePh").innerHTML = avatar({ photoURL: photo, username: meDoc.username }); } catch(e) { toast("Photo illisible"); }
+  };
+  $("#eSave").onclick = async () => {
+    const name = $("#eName").value.trim(); if (!name) { toast("Écris un nom d'utilisateur."); return; }
+    try {
+      await updateDoc(doc(db, "users", me.uid), { username: name, bio: $("#eBio").value.trim(), photoURL: photo });
+      meDoc = { ...meDoc, username: name, bio: $("#eBio").value.trim(), photoURL: photo };
+      closeSheet(); renderProfile(me.uid, $("#v-profile"), true); toast("Profil enregistré");
+    } catch(e) { toast("Erreur : " + e.message); }
+  };
+}
+function resizeImg(file, max = 256){
+  return new Promise((res, rej) => {
+    const fr = new FileReader(), img = new Image();
+    fr.onload = () => { img.onload = () => {
+      const s = Math.min(1, max / Math.max(img.width, img.height)), c = document.createElement("canvas");
+      c.width = Math.round(img.width * s); c.height = Math.round(img.height * s);
+      c.getContext("2d").drawImage(img, 0, 0, c.width, c.height);
+      res(c.toDataURL("image/jpeg", 0.8));
+    }; img.onerror = rej; img.src = fr.result; };
+    fr.onerror = rej; fr.readAsDataURL(file);
+  });
+}
+
+/* ---------- Retrait ---------- */
+function openWithdraw(bal){
+  let method = "Orange Money";
+  openSheet(`<h3>Retirer mes gains</h3><p class="sm">Solde disponible : <b>${bal} FCFA</b> (minimum ${MIN_WD} FCFA). Le paiement est fait à la main par le propriétaire.</p>
+    <button class="opt on" data-m="Orange Money">Orange Money</button><button class="opt" data-m="Wave">Wave</button>
+    <input id="wPhone" type="tel" placeholder="Numéro de téléphone" style="margin-top:6px">
+    <input id="wAmt" type="number" placeholder="Montant en FCFA" style="margin-top:8px" value="${bal}">
+    <button class="btn" style="width:100%;margin-top:10px" id="wGo">Envoyer la demande</button>`);
+  $("#panel").onclick = e => { const b = e.target.closest("[data-m]"); if (!b) return; method = b.dataset.m; document.querySelectorAll("#panel [data-m]").forEach(x => x.classList.toggle("on", x === b)); };
+  $("#wGo").onclick = async () => {
+    const phone = $("#wPhone").value.trim(), amt = Math.floor(Number($("#wAmt").value));
+    if (phone.length < 8) { toast("Écris ton numéro de téléphone."); return; }
+    if (!(amt >= MIN_WD)) { toast("Le minimum est " + MIN_WD + " FCFA."); return; }
+    if (amt > bal) { toast("Ton solde est de " + bal + " FCFA."); return; }
+    $("#wGo").disabled = true;
+    try {
+      await addDoc(collection(db, "withdrawals"), { uid: me.uid, username: meDoc.username, amount: amt, method, phone, status: "En attente", createdAt: serverTimestamp() });
+      closeSheet(); toast("Demande envoyée (En attente)"); renderProfile(me.uid, $("#v-profile"), true);
+    } catch(e) { toast("Erreur : " + e.message); $("#wGo").disabled = false; }
+  };
+}
+
+/* ---------- Recherche ---------- */
+let st = null;
+$("#sq").oninput = () => { clearTimeout(st); st = setTimeout(() => runSearch($("#sq").value), 350); };
+async function runSearch(q){
+  q = q.trim().toLowerCase();
+  const out = $("#sres");
+  if (!q) { out.innerHTML = '<div class="empty">Cherche un créateur, un mot ou un #hashtag</div>'; return; }
+  out.innerHTML = '<div class="empty">Recherche…</div>';
+  try {
+    const [us, ps] = await Promise.all([getDocs(query(collection(db, "users"), limit(200))), getAllPosts()]);
+    const users = us.docs.map(d => ({ id: d.id, ...d.data() })).filter(u => (u.username || "").toLowerCase().includes(q)).slice(0, 15);
+    const counts = await Promise.all(users.map(u => getDocs(collection(db, "users", u.id, "followers")).then(s => s.size).catch(() => 0)));
+    const posts = ps.filter(p => p.url && !hidden.has(p.id) && (p.caption.toLowerCase().includes(q) || p.username.toLowerCase().includes(q)));
+    let h = "";
+    if (users.length) h += "<h3 style='margin-top:14px'>Créateurs</h3>" + users.map((u, i) => `<button class="urow" style="width:100%;text-align:left" data-uid="${u.id}">${avatar(u, "s")}<div><b>@${esc(u.username)}</b><div class="sm">${counts[i]} abonnés</div></div></button>`).join("");
+    if (posts.length) h += "<h3 style='margin-top:14px'>Vidéos</h3>" + posts.map(p => `<div class="vrow"><video src="${esc(p.url)}" controls playsinline preload="metadata"></video><div class="t"><button data-uid="${esc(p.uid)}" style="text-align:left;font-weight:700">@${esc(p.username)}</button><span>${esc(p.caption)}</span><span class="sm">👁 ${Number(p.views)||0} vues</span></div></div>`).join("");
+    out.innerHTML = h || '<div class="empty">Aucun résultat.</div>';
+    out.querySelectorAll("[data-uid]").forEach(b => b.onclick = () => b.dataset.uid && openOther(b.dataset.uid));
+  } catch(e) { out.innerHTML = '<div class="empty">Erreur : ' + esc(e.message) + '</div>'; }
+}
+</script>
+</body>
+</html>
