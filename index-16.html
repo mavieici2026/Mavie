@@ -1,0 +1,472 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#000000">
+<title>Ma Vie</title>
+<style>
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;height:100%;background:#000;color:#fff;font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;overflow:hidden}
+button{font:inherit;color:inherit;background:none;border:0;cursor:pointer;padding:0}
+input,textarea,select{font:inherit;width:100%;padding:12px;border-radius:10px;border:1px solid #444;background:#111;color:#fff;margin:6px 0}
+#app{position:fixed;inset:0;display:flex;flex-direction:column;max-width:600px;margin:0 auto}
+#screen{flex:1;overflow-y:auto;position:relative}
+nav{display:flex;border-top:1px solid #222;background:#000;padding-bottom:env(safe-area-inset-bottom)}
+nav button{flex:1;padding:14px 0;font-size:13px;color:#888}
+nav button.on{color:#fff;font-weight:700}
+nav button.plus{font-size:22px;color:#000;background:#fff;border-radius:10px;margin:6px 14px;padding:2px 0;font-weight:700}
+.logo{font-size:30px;font-weight:900;letter-spacing:4px;text-align:center;margin:40px 0 20px}
+.box{padding:20px}
+.btn{display:block;width:100%;background:#fff;color:#000;font-weight:700;padding:13px;border-radius:10px;text-align:center;margin:10px 0}
+.btn.line{background:none;color:#fff;border:1px solid #666}
+.btn:disabled{opacity:.4}
+.link{color:#bbb;text-decoration:underline;text-align:center;display:block;margin:14px 0}
+.tabs{position:absolute;top:0;left:0;right:0;z-index:5;display:flex;justify-content:center;gap:24px;padding:14px 0;background:linear-gradient(#000a,#0000)}
+.tabs button{color:#aaa;font-weight:600;font-size:16px;padding-bottom:4px}
+.tabs button.on{color:#fff;border-bottom:2px solid #fff}
+.feed{height:100%;overflow-y:scroll;scroll-snap-type:y mandatory}
+.vid{height:100%;scroll-snap-align:start;position:relative;background:#000;display:flex;align-items:center;justify-content:center}
+.vid video{width:100%;height:100%;object-fit:contain;background:#000}
+.side{position:absolute;right:10px;bottom:90px;display:flex;flex-direction:column;gap:16px;align-items:center}
+.side button{display:flex;flex-direction:column;align-items:center;font-size:26px;text-shadow:0 1px 4px #000}
+.side small{font-size:12px}
+.info{position:absolute;left:12px;right:80px;bottom:18px;text-shadow:0 1px 4px #000}
+.info p{margin:6px 0;font-size:14px}
+.fbtn{margin-left:8px;border:1px solid #fff;border-radius:6px;padding:2px 10px;font-size:12px}
+.empty{text-align:center;color:#999;padding:80px 20px}
+.av{width:84px;height:84px;border-radius:50%;background:#222;object-fit:cover;display:flex;align-items:center;justify-content:center;font-size:34px;margin:0 auto;overflow:hidden}
+.av.sm{width:44px;height:44px;font-size:18px;margin:0}
+.stats{display:flex;justify-content:space-around;margin:16px 0;text-align:center}
+.stats b{display:block;font-size:18px}
+.stats small{color:#999}
+.card{background:#111;border:1px solid #2a2a2a;border-radius:12px;padding:14px;margin:12px 0}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.grid .it{background:#111;border-radius:10px;overflow:hidden;font-size:12px}
+.grid video{width:100%;aspect-ratio:9/12;object-fit:cover;background:#000}
+.grid .it div{padding:6px}
+.row{display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid #1d1d1d}
+#modal{position:fixed;inset:0;background:#000b;display:none;align-items:flex-end;justify-content:center;z-index:50}
+#modal.show{display:flex}
+#modal .sheet{background:#111;width:100%;max-width:600px;max-height:80%;overflow-y:auto;border-radius:18px 18px 0 0;padding:18px}
+#toast{position:fixed;left:50%;transform:translateX(-50%);bottom:90px;background:#fff;color:#000;padding:10px 16px;border-radius:20px;font-size:14px;display:none;z-index:99;max-width:90%;text-align:center}
+.bar{height:8px;background:#222;border-radius:5px;overflow:hidden;margin:10px 0}
+.bar i{display:block;height:100%;width:0;background:#fff}
+h2{margin:6px 0 12px}
+.tag{font-size:12px;border-radius:6px;padding:2px 8px;background:#222}
+.tag.ok{background:#fff;color:#000}
+.err{color:#ff8a8a;font-size:14px;min-height:18px}
+</style>
+</head>
+<body>
+<div id="app">
+  <div id="screen"></div>
+  <nav id="nav" style="display:none">
+    <button data-act="go" data-v="home">Accueil</button>
+    <button data-act="go" data-v="search">Recherche</button>
+    <button class="plus" data-act="go" data-v="upload">+</button>
+    <button data-act="go" data-v="me">Profil</button>
+  </nav>
+</div>
+<div id="modal"><div class="sheet" id="sheet"></div></div>
+<div id="toast"></div>
+
+<script type="module">
+import {initializeApp} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import {getAuth,onAuthStateChanged,createUserWithEmailAndPassword,signInWithEmailAndPassword,signOut} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+import {getFirestore,doc,getDoc,setDoc,updateDoc,deleteDoc,addDoc,collection,getDocs,query,where,increment,serverTimestamp} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyDt_UcyL9pXwvfE-5NpOozMykCJh7zvvrs",
+  authDomain: "ma-vie-2b252.firebaseapp.com",
+  projectId: "ma-vie-2b252",
+  storageBucket: "ma-vie-2b252.firebasestorage.app",
+  messagingSenderId: "235933753646",
+  appId: "1:235933753646:web:91df8965e68affbf3f9abf"
+};
+const CLOUD="gevaxyli", PRESET="mavie_videos";
+const FCFA_PAR_1000_VUES=100, RETRAIT_MIN=500;
+
+const app=initializeApp(firebaseConfig), auth=getAuth(app), db=getFirestore(app);
+const $=s=>document.querySelector(s);
+const screen=$("#screen");
+const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const num=n=>Number(n||0).toLocaleString("fr-FR");
+let toastT;
+function toast(m){const t=$("#toast");t.textContent=m;t.style.display="block";clearTimeout(toastT);toastT=setTimeout(()=>t.style.display="none",3200)}
+function openModal(html){$("#sheet").innerHTML=html;$("#modal").classList.add("show")}
+function closeModal(){$("#modal").classList.remove("show");$("#sheet").innerHTML=""}
+$("#modal").addEventListener("click",e=>{if(e.target.id==="modal")closeModal()});
+
+let me=null, meData={}, view="home", tab="foryou", posts=[], following=new Set(), users={}, soundOn=false, viewedNow=new Set(), activeId=null, observer=null;
+const toSec=v=>v?.seconds??(typeof v==="number"?(v>1e12?v/1000:v):0);
+
+async function getUser(uid){
+  if(!uid)return {};
+  if(users[uid])return users[uid];
+  try{const s=await getDoc(doc(db,"users",uid));users[uid]=s.exists()?s.data():{}}catch(e){users[uid]={}}
+  return users[uid];
+}
+const nameOf=p=>users[p.uid]?.username||p.username||p.user||"Créateur";
+function avatar(u,cls=""){
+  const n=(u?.username||"?").trim().charAt(0).toUpperCase();
+  return u?.photo?`<img class="av ${cls}" src="${esc(u.photo)}" alt="">`:`<div class="av ${cls}">${esc(n)}</div>`;
+}
+
+async function loadPosts(){
+  const s=await getDocs(collection(db,"posts"));
+  posts=s.docs.map(d=>{const p=d.data();return {id:d.id,...p,url:p.videoUrl||p.url,uid:p.uid||p.userId||p.ownerId||"",views:Number(p.views||0),t:toSec(p.createdAt||p.time)}})
+    .filter(p=>p.url).sort((a,b)=>b.t-a.t);
+  const uids=[...new Set(posts.map(p=>p.uid).filter(Boolean))];
+  await Promise.all(uids.map(getUser));
+}
+async function loadFollowing(){
+  try{const s=await getDocs(collection(db,"users",me.uid,"following"));following=new Set(s.docs.map(d=>d.id))}catch(e){following=new Set()}
+}
+
+/* ---------- Connexion ---------- */
+function renderAuth(mode="login"){
+  $("#nav").style.display="none";
+  const up=mode==="signup";
+  screen.innerHTML=`<div class="box"><div class="logo">MA VIE</div>
+  ${up?'<input id="a-name" placeholder="Nom d\'utilisateur" autocomplete="username">':''}
+  <input id="a-mail" type="email" placeholder="Adresse e-mail" autocomplete="email">
+  <input id="a-pass" type="password" placeholder="Mot de passe (6 caractères minimum)" autocomplete="${up?"new-password":"current-password"}">
+  <div class="err" id="a-err"></div>
+  <button class="btn" data-act="${up?"signup":"login"}">${up?"Créer mon compte":"Se connecter"}</button>
+  <button class="link" data-act="authmode" data-m="${up?"login":"signup"}">${up?"J'ai déjà un compte":"Pas de compte ? Créer un compte"}</button></div>`;
+}
+function authErr(e){
+  const c=e.code||"";
+  if(c.includes("email-already"))return "Cette adresse e-mail est déjà utilisée.";
+  if(c.includes("invalid-email"))return "Adresse e-mail invalide.";
+  if(c.includes("weak-password"))return "Mot de passe trop court (6 caractères minimum).";
+  if(c.includes("invalid-credential")||c.includes("wrong-password")||c.includes("user-not-found"))return "E-mail ou mot de passe incorrect.";
+  if(c.includes("network"))return "Pas de connexion internet.";
+  return "Erreur : "+(c||e.message);
+}
+async function doSignup(){
+  const name=$("#a-name").value.trim(),mail=$("#a-mail").value.trim(),pass=$("#a-pass").value;
+  if(name.length<2){$("#a-err").textContent="Écris un nom d'utilisateur (2 lettres minimum).";return}
+  try{
+    const c=await createUserWithEmailAndPassword(auth,mail,pass);
+    await setDoc(doc(db,"users",c.user.uid),{username:name,usernameLower:name.toLowerCase(),bio:"",photo:"",createdAt:serverTimestamp()});
+  }catch(e){$("#a-err").textContent=authErr(e)}
+}
+async function doLogin(){
+  try{await signInWithEmailAndPassword(auth,$("#a-mail").value.trim(),$("#a-pass").value)}
+  catch(e){$("#a-err").textContent=authErr(e)}
+}
+
+onAuthStateChanged(auth,async u=>{
+  me=u;
+  if(!u){renderAuth();return}
+  screen.innerHTML='<div class="empty">Chargement…</div>';
+  let s=await getDoc(doc(db,"users",u.uid));
+  if(!s.exists()){
+    const n=(u.email||"user").split("@")[0];
+    await setDoc(doc(db,"users",u.uid),{username:n,usernameLower:n.toLowerCase(),bio:"",photo:"",createdAt:serverTimestamp()});
+    s=await getDoc(doc(db,"users",u.uid));
+  }
+  meData=s.data();users[u.uid]=meData;
+  await loadFollowing();
+  $("#nav").style.display="flex";
+  go("home");
+});
+
+/* ---------- Navigation ---------- */
+async function go(v,arg){
+  view=v;
+  document.querySelectorAll("nav button[data-v]").forEach(b=>b.classList.toggle("on",b.dataset.v===v||(v==="user"&&b.dataset.v==="home")));
+  if(observer){observer.disconnect();observer=null}
+  document.querySelectorAll("video").forEach(x=>x.pause());
+  if(v==="home"){screen.innerHTML='<div class="empty">Chargement…</div>';try{await loadPosts()}catch(e){toast("Impossible de charger les vidéos.")}renderHome()}
+  else if(v==="search")renderSearch();
+  else if(v==="upload")renderUpload();
+  else if(v==="me")renderProfile(me.uid);
+  else if(v==="user")renderProfile(arg);
+}
+
+/* ---------- Accueil / fil ---------- */
+function postHtml(p){
+  const own=p.uid===me.uid;
+  return `<section class="vid" data-id="${p.id}">
+  <video src="${esc(p.url)}" loop playsinline ${soundOn?"":"muted"} preload="metadata"></video>
+  <div class="side">
+    <button data-act="like" data-id="${p.id}"><span id="lk-${p.id}">♡</span><small id="lc-${p.id}">0</small></button>
+    <button data-act="comments" data-id="${p.id}">💬<small id="cc-${p.id}">0</small></button>
+    <button data-act="share" data-id="${p.id}">↗<small>Partager</small></button>
+    <button data-act="report" data-id="${p.id}">⚑<small>Signaler</small></button>
+  </div>
+  <div class="info"><b data-act="profile" data-uid="${esc(p.uid)}">@${esc(nameOf(p))}</b>${own||!p.uid?"":`<button class="fbtn" data-act="follow" data-uid="${esc(p.uid)}" data-fuid="${esc(p.uid)}">${following.has(p.uid)?"Abonné":"Suivre"}</button>`}
+  <p>${esc(p.desc||"")}</p><small>👁 <span id="vw-${p.id}">${num(p.views)}</span> vues</small></div>
+  </section>`;
+}
+function renderHome(){
+  const list=tab==="following"?posts.filter(p=>following.has(p.uid)):posts;
+  const tabs=`<div class="tabs"><button data-act="tab" data-t="following" class="${tab==="following"?"on":""}">Abonnements</button><button data-act="tab" data-t="foryou" class="${tab==="foryou"?"on":""}">Pour toi</button></div>`;
+  if(!list.length){
+    screen.innerHTML=tabs+`<div class="empty" style="padding-top:140px">${tab==="following"?(following.size?"Les créateurs que tu suis n'ont pas encore publié.":"Vous ne suivez encore personne."):"Aucune vidéo pour l'instant. Appuie sur + pour publier la première !"}</div>`;
+    return;
+  }
+  screen.innerHTML=tabs+`<div class="feed" id="feed">${list.map(postHtml).join("")}</div>`;
+  setupVideos();
+  fillCounts(list);
+}
+function setupVideos(){
+  observer=new IntersectionObserver(es=>{
+    es.forEach(en=>{
+      const v=en.target.querySelector("video"),id=en.target.dataset.id;
+      if(en.isIntersecting){
+        activeId=id;v.muted=!soundOn;v.play().catch(()=>{});
+        setTimeout(()=>{if(activeId===id)countView(id)},2000);
+      }else v.pause();
+    });
+  },{threshold:.7,root:$("#feed")});
+  document.querySelectorAll(".vid").forEach(s=>{
+    observer.observe(s);
+    s.querySelector("video").addEventListener("click",()=>{
+      soundOn=!soundOn;
+      document.querySelectorAll(".vid video").forEach(x=>x.muted=!soundOn);
+      toast(soundOn?"Son activé":"Son coupé");
+    });
+  });
+}
+async function countView(id){
+  if(viewedNow.has(id))return;viewedNow.add(id);
+  try{
+    const r=doc(db,"posts",id,"viewers",me.uid);
+    if((await getDoc(r)).exists())return;
+    await setDoc(r,{at:serverTimestamp()});
+    await updateDoc(doc(db,"posts",id),{views:increment(1)});
+    const p=posts.find(x=>x.id===id);if(p){p.views++;const e=$("#vw-"+id);if(e)e.textContent=num(p.views)}
+  }catch(e){}
+}
+async function fillCounts(list){
+  for(const p of list){
+    try{
+      const [l,c,mine]=await Promise.all([getDocs(collection(db,"posts",p.id,"likes")),getDocs(collection(db,"posts",p.id,"comments")),getDoc(doc(db,"posts",p.id,"likes",me.uid))]);
+      const a=$("#lc-"+p.id),b=$("#cc-"+p.id),k=$("#lk-"+p.id);
+      if(a)a.textContent=l.size;if(b)b.textContent=c.size;if(k)k.textContent=mine.exists()?"♥":"♡";
+    }catch(e){}
+  }
+}
+async function toggleLike(id){
+  const k=$("#lk-"+id),a=$("#lc-"+id);if(!k)return;
+  const r=doc(db,"posts",id,"likes",me.uid),liked=k.textContent==="♥";
+  try{
+    if(liked){await deleteDoc(r);k.textContent="♡";a.textContent=Math.max(0,+a.textContent-1)}
+    else{await setDoc(r,{at:serverTimestamp()});k.textContent="♥";a.textContent=+a.textContent+1}
+  }catch(e){toast("Impossible d'aimer cette vidéo.")}
+}
+async function toggleFollow(uid){
+  if(!uid||uid===me.uid)return;
+  try{
+    if(following.has(uid)){
+      await deleteDoc(doc(db,"users",me.uid,"following",uid));await deleteDoc(doc(db,"users",uid,"followers",me.uid));following.delete(uid);
+    }else{
+      await setDoc(doc(db,"users",me.uid,"following",uid),{at:serverTimestamp()});await setDoc(doc(db,"users",uid,"followers",me.uid),{at:serverTimestamp()});following.add(uid);
+    }
+    document.querySelectorAll(`[data-fuid="${CSS.escape(uid)}"]`).forEach(b=>b.textContent=following.has(uid)?(b.dataset.big?"Ne plus suivre":"Abonné"):(b.dataset.big?"Suivre":"Suivre"));
+    if(view==="user")renderProfile(uid);
+  }catch(e){toast("Action impossible pour le moment.")}
+}
+async function openComments(id){
+  openModal(`<h2>Commentaires</h2><div id="cm-list">Chargement…</div><input id="cm-in" placeholder="Écris un commentaire…" maxlength="300"><button class="btn" data-act="sendcomment" data-id="${id}">Envoyer</button>`);
+  await loadComments(id);
+}
+async function loadComments(id){
+  try{
+    const s=await getDocs(collection(db,"posts",id,"comments"));
+    const l=s.docs.map(d=>d.data()).sort((a,b)=>toSec(a.createdAt)-toSec(b.createdAt));
+    const el=$("#cm-list");if(!el)return;
+    el.innerHTML=l.length?l.map(c=>`<div class="row"><div><b>@${esc(c.username||"Créateur")}</b><br>${esc(c.text)}</div></div>`).join(""):'<div class="empty" style="padding:20px">Aucun commentaire. Sois le premier !</div>';
+    const cc=$("#cc-"+id);if(cc)cc.textContent=l.length;
+  }catch(e){const el=$("#cm-list");if(el)el.textContent="Impossible de charger les commentaires."}
+}
+async function sendComment(id){
+  const i=$("#cm-in"),t=i.value.trim();if(!t)return;
+  try{await addDoc(collection(db,"posts",id,"comments"),{uid:me.uid,username:meData.username||"Créateur",text:t,createdAt:serverTimestamp()});i.value="";await loadComments(id)}
+  catch(e){toast("Commentaire non envoyé.")}
+}
+async function share(id){
+  const p=posts.find(x=>x.id===id),url=location.href.split("#")[0];
+  try{
+    if(navigator.share)await navigator.share({title:"Ma Vie",text:p?.desc||"Regarde cette vidéo sur Ma Vie",url});
+    else{await navigator.clipboard.writeText(url);toast("Lien copié")}
+  }catch(e){}
+}
+
+/* ---------- Signaler une vidéo ---------- */
+const MOTIFS=["Contenu inapproprié","Violence ou danger","Arnaque ou fausse information","Spam ou faux compte","Autre"];
+function openReport(id){
+  openModal(`<h2>Signaler cette vidéo</h2><p style="color:#aaa;margin-top:0">Pourquoi signales-tu cette vidéo ?</p>`+
+    MOTIFS.map((m,i)=>`<button class="btn line" data-act="sendreport" data-id="${id}" data-i="${i}">${m}</button>`).join("")+
+    `<button class="link" data-act="closemodal">Annuler</button>`);
+}
+async function sendReport(id,i){
+  const p=posts.find(x=>x.id===id);
+  try{
+    await addDoc(collection(db,"reports"),{postId:id,postOwner:p?.uid||"",reporter:me.uid,reason:MOTIFS[i],status:"Nouveau",createdAt:serverTimestamp()});
+    closeModal();toast("Merci. La vidéo a été signalée.");
+  }catch(e){toast("Signalement impossible pour le moment.")}
+}
+
+/* ---------- Profil ---------- */
+async function renderProfile(uid){
+  screen.innerHTML='<div class="empty">Chargement…</div>';
+  const own=uid===me.uid;
+  try{await loadPosts()}catch(e){}
+  users[uid]=null;const u=await getUser(uid);if(own)meData=u;
+  let fers=0,fing=0;
+  try{fers=(await getDocs(collection(db,"users",uid,"followers"))).size;fing=(await getDocs(collection(db,"users",uid,"following"))).size}catch(e){}
+  const mine=posts.filter(p=>p.uid===uid),views=mine.reduce((a,p)=>a+p.views,0);
+  let cardGains="",demandes="";
+  if(own){
+    let ws=[];
+    try{ws=(await getDocs(query(collection(db,"withdrawals"),where("uid","==",me.uid)))).docs.map(d=>d.data()).sort((a,b)=>toSec(b.createdAt)-toSec(a.createdAt))}catch(e){}
+    const gains=Math.floor(views*FCFA_PAR_1000_VUES/1000);
+    const retire=ws.filter(w=>w.status!=="Refusé").reduce((a,w)=>a+Number(w.amount||0),0);
+    const solde=Math.max(0,gains-retire);
+    window._solde=solde;
+    cardGains=`<div class="card"><b>Mes gains (estimation)</b><div style="font-size:28px;font-weight:800;margin:8px 0">${num(solde)} FCFA</div>
+    <small style="color:#999">${num(views)} vues · ${FCFA_PAR_1000_VUES} FCFA pour 1 000 vues (calcul de test)<br>Retrait possible à partir de ${RETRAIT_MIN} FCFA</small>
+    <button class="btn" data-act="withdraw" ${solde<RETRAIT_MIN?"disabled":""}>Retirer</button></div>`;
+    if(ws.length)demandes=`<div class="card"><b>Mes demandes de retrait</b>${ws.map(w=>`<div class="row"><div style="flex:1">${num(w.amount)} FCFA · ${esc(w.method)}</div><span class="tag ${w.status==="Payé"?"ok":""}">${esc(w.status)}</span></div>`).join("")}</div>`;
+  }
+  screen.innerHTML=`<div class="box">${avatar(u)}
+  ${own?`<div style="text-align:center;margin-top:8px"><label class="link" style="margin:6px 0">Changer la photo<input type="file" accept="image/*" id="photo-in" hidden></label></div>`:""}
+  <h2 style="text-align:center;margin-bottom:4px">@${esc(u.username||"Créateur")}</h2>
+  <p style="text-align:center;color:#bbb;margin:4px 0">${esc(u.bio||"")}</p>
+  <div class="stats"><div><b>${mine.length}</b><small>Vidéos</small></div><div><b>${fers}</b><small>Abonnés</small></div><div><b>${fing}</b><small>Abonnements</small></div><div><b>${num(views)}</b><small>Vues</small></div></div>
+  ${own?`<button class="btn line" data-act="editprofile">Modifier mon profil</button>`:`<button class="btn" data-act="follow" data-uid="${esc(uid)}" data-fuid="${esc(uid)}" data-big="1">${following.has(uid)?"Ne plus suivre":"Suivre"}</button>`}
+  ${cardGains}${demandes}
+  <h2>${own?"Mes vidéos":"Vidéos"}</h2>
+  ${mine.length?`<div class="grid">${mine.map(p=>`<div class="it"><video src="${esc(p.url)}#t=0.1" controls playsinline preload="metadata"></video><div>${esc(p.desc||"")}<br><small style="color:#999">👁 ${num(p.views)} vues</small>${own?`<br><button class="tag" style="margin-top:6px" data-act="delpost" data-id="${p.id}">Supprimer</button>`:""}</div></div>`).join("")}</div>`:'<div class="empty" style="padding:30px">Aucune vidéo.</div>'}
+  ${own?`<button class="link" data-act="logout">Se déconnecter</button>`:""}
+  <div style="height:30px"></div></div>`;
+  const pin=$("#photo-in");if(pin)pin.addEventListener("change",changePhoto);
+}
+function changePhoto(e){
+  const f=e.target.files[0];if(!f)return;
+  const img=new Image(),r=new FileReader();
+  r.onload=()=>{img.onload=async()=>{
+    const c=document.createElement("canvas"),s=256,m=Math.min(img.width,img.height);
+    c.width=c.height=s;c.getContext("2d").drawImage(img,(img.width-m)/2,(img.height-m)/2,m,m,0,0,s,s);
+    try{await updateDoc(doc(db,"users",me.uid),{photo:c.toDataURL("image/jpeg",.8)});toast("Photo mise à jour");renderProfile(me.uid)}catch(err){toast("Photo non enregistrée.")}
+  };img.src=r.result};
+  r.readAsDataURL(f);
+}
+function openEdit(){
+  openModal(`<h2>Modifier mon profil</h2><input id="e-name" value="${esc(meData.username||"")}" placeholder="Nom d'utilisateur" maxlength="30"><textarea id="e-bio" rows="3" placeholder="Description" maxlength="150">${esc(meData.bio||"")}</textarea><button class="btn" data-act="saveprofile">Enregistrer</button><button class="link" data-act="closemodal">Annuler</button>`);
+}
+async function saveProfile(){
+  const n=$("#e-name").value.trim(),b=$("#e-bio").value.trim();
+  if(n.length<2){toast("Nom trop court.");return}
+  try{await updateDoc(doc(db,"users",me.uid),{username:n,usernameLower:n.toLowerCase(),bio:b});closeModal();toast("Profil enregistré");renderProfile(me.uid)}
+  catch(e){toast("Enregistrement impossible.")}
+}
+async function delPost(id){
+  if(!confirm("Supprimer cette vidéo ?"))return;
+  try{await deleteDoc(doc(db,"posts",id));toast("Vidéo supprimée");renderProfile(me.uid)}catch(e){toast("Suppression impossible.")}
+}
+
+/* ---------- Retrait ---------- */
+function openWithdraw(){
+  openModal(`<h2>Demande de retrait</h2><p style="color:#aaa;margin-top:0">Solde : ${num(window._solde)} FCFA. Minimum ${RETRAIT_MIN} FCFA.</p>
+  <select id="w-m"><option>Orange Money</option><option>Wave</option></select>
+  <input id="w-p" type="tel" placeholder="Numéro de téléphone">
+  <input id="w-a" type="number" placeholder="Montant en FCFA" value="${window._solde}">
+  <button class="btn" data-act="sendwithdraw">Envoyer la demande</button><button class="link" data-act="closemodal">Annuler</button>`);
+}
+async function sendWithdraw(){
+  const m=$("#w-m").value,p=$("#w-p").value.trim(),a=Math.floor(Number($("#w-a").value));
+  if(p.length<8){toast("Écris ton numéro.");return}
+  if(!a||a<RETRAIT_MIN){toast(`Minimum ${RETRAIT_MIN} FCFA.`);return}
+  if(a>window._solde){toast("Montant plus grand que ton solde.");return}
+  try{
+    await addDoc(collection(db,"withdrawals"),{uid:me.uid,username:meData.username||"",amount:a,method:m,phone:p,status:"En attente",createdAt:serverTimestamp()});
+    closeModal();toast("Demande envoyée (En attente)");renderProfile(me.uid);
+  }catch(e){toast("Demande non envoyée.")}
+}
+
+/* ---------- Publier ---------- */
+function renderUpload(){
+  screen.innerHTML=`<div class="box"><h2>Publier une vidéo</h2>
+  <label class="btn line" style="cursor:pointer">Choisir une vidéo du téléphone<input type="file" accept="video/*" id="v-in" hidden></label>
+  <div id="v-name" style="color:#bbb;font-size:14px;text-align:center"></div>
+  <textarea id="v-desc" rows="3" placeholder="Description avec #hashtags" maxlength="200"></textarea>
+  <div class="bar" id="v-bar" style="display:none"><i id="v-fill"></i></div>
+  <div class="err" id="v-err"></div>
+  <button class="btn" id="v-go" data-act="publish">Publier</button></div>`;
+  $("#v-in").addEventListener("change",e=>{const f=e.target.files[0];$("#v-name").textContent=f?f.name:""});
+}
+function publish(){
+  const f=$("#v-in").files[0],desc=$("#v-desc").value.trim(),err=$("#v-err");
+  if(!f){err.textContent="Choisis d'abord une vidéo.";return}
+  err.textContent="";$("#v-go").disabled=true;$("#v-bar").style.display="block";
+  const fd=new FormData();fd.append("file",f);fd.append("upload_preset",PRESET);
+  const x=new XMLHttpRequest();
+  x.open("POST",`https://api.cloudinary.com/v1_1/${CLOUD}/video/upload`);
+  x.upload.onprogress=e=>{if(e.lengthComputable)$("#v-fill").style.width=Math.round(e.loaded/e.total*100)+"%"};
+  x.onerror=()=>{err.textContent="Pas de connexion. Réessaie.";$("#v-go").disabled=false};
+  x.onload=async()=>{
+    try{
+      const r=JSON.parse(x.responseText);
+      if(!r.secure_url)throw new Error(r.error?.message||"Envoi refusé");
+      await addDoc(collection(db,"posts"),{uid:me.uid,username:meData.username||"Créateur",videoUrl:r.secure_url,desc,views:0,createdAt:serverTimestamp()});
+      toast("Vidéo publiée !");go("home");
+    }catch(e){err.textContent="Erreur : "+e.message;$("#v-go").disabled=false}
+  };
+  x.send(fd);
+}
+
+/* ---------- Recherche ---------- */
+let allUsers=null,st;
+function renderSearch(){
+  screen.innerHTML=`<div class="box"><input id="q" placeholder="Chercher un créateur, un mot ou un #hashtag" autocomplete="off"><div id="res"></div></div>`;
+  $("#q").addEventListener("input",()=>{clearTimeout(st);st=setTimeout(doSearch,300)});
+}
+async function doSearch(){
+  const q=$("#q").value.trim().toLowerCase(),res=$("#res");
+  if(!q){res.innerHTML="";return}
+  res.innerHTML='<div class="empty" style="padding:30px">Recherche…</div>';
+  try{
+    if(!allUsers){allUsers=(await getDocs(collection(db,"users"))).docs.map(d=>({id:d.id,...d.data()}))}
+    await loadPosts();
+    const us=allUsers.filter(u=>(u.username||"").toLowerCase().includes(q.replace(/^@/,"")));
+    const ps=posts.filter(p=>(p.desc||"").toLowerCase().includes(q)||nameOf(p).toLowerCase().includes(q));
+    res.innerHTML=`<h2>Créateurs</h2>${us.length?us.map(u=>`<div class="row" data-act="profile" data-uid="${u.id}">${avatar(u,"sm")}<b>@${esc(u.username)}</b></div>`).join(""):'<div style="color:#999">Aucun créateur trouvé.</div>'}
+    <h2 style="margin-top:20px">Vidéos</h2>${ps.length?`<div class="grid">${ps.map(p=>`<div class="it"><video src="${esc(p.url)}#t=0.1" controls playsinline preload="metadata"></video><div>${esc(p.desc||"")}<br><small style="color:#999" data-act="profile" data-uid="${esc(p.uid)}">@${esc(nameOf(p))} · 👁 ${num(p.views)}</small></div></div>`).join("")}</div>`:'<div style="color:#999">Aucune vidéo trouvée.</div>'}`;
+  }catch(e){res.innerHTML='<div class="empty" style="padding:30px">Recherche impossible.</div>'}
+}
+
+/* ---------- Clics ---------- */
+document.addEventListener("click",e=>{
+  const t=e.target.closest("[data-act]");if(!t)return;
+  const a=t.dataset.act,id=t.dataset.id,uid=t.dataset.uid;
+  if(a==="go")go(t.dataset.v);
+  else if(a==="authmode")renderAuth(t.dataset.m);
+  else if(a==="signup")doSignup();
+  else if(a==="login")doLogin();
+  else if(a==="logout"){if(confirm("Se déconnecter ?"))signOut(auth)}
+  else if(a==="tab"){tab=t.dataset.t;renderHome()}
+  else if(a==="like")toggleLike(id);
+  else if(a==="comments")openComments(id);
+  else if(a==="sendcomment")sendComment(id);
+  else if(a==="share")share(id);
+  else if(a==="report")openReport(id);
+  else if(a==="sendreport")sendReport(id,+t.dataset.i);
+  else if(a==="follow")toggleFollow(uid);
+  else if(a==="profile"){if(uid)go(uid===me.uid?"me":"user",uid)}
+  else if(a==="editprofile")openEdit();
+  else if(a==="saveprofile")saveProfile();
+  else if(a==="delpost")delPost(id);
+  else if(a==="withdraw")openWithdraw();
+  else if(a==="sendwithdraw")sendWithdraw();
+  else if(a==="publish")publish();
+  else if(a==="closemodal")closeModal();
+});
+</script>
+</body>
+</html>
