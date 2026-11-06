@@ -1,0 +1,480 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Ma Vie</title>
+<style>
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;height:100%;background:#000;color:#fff;font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif}
+button,input,select,textarea{font:inherit;color:inherit}
+[hidden]{display:none!important}
+.logo{font-weight:900;letter-spacing:4px;font-size:28px;text-align:center}
+#auth{max-width:420px;margin:0 auto;padding:40px 20px;display:flex;flex-direction:column;gap:12px}
+input,select,textarea{width:100%;padding:14px;border-radius:10px;border:1px solid #444;background:#111}
+.btn{padding:14px;border-radius:10px;border:1px solid #fff;background:#fff;color:#000;font-weight:700;cursor:pointer}
+.btn.alt{background:#000;color:#fff}
+.btn.small{padding:8px 14px;font-size:14px}
+.link{background:none;border:0;color:#aaa;text-decoration:underline;padding:8px;cursor:pointer}
+#app{height:100dvh;display:flex;flex-direction:column}
+#view{flex:1;overflow:hidden;position:relative}
+nav{display:flex;border-top:1px solid #222;background:#000;padding-bottom:env(safe-area-inset-bottom)}
+nav button{flex:1;padding:14px 0;background:none;border:0;font-size:14px;color:#888}
+nav button.on{color:#fff;font-weight:700}
+nav button.plus{font-size:24px;color:#000;background:#fff;border-radius:10px;margin:6px 10px;padding:4px 0;font-weight:900}
+.topbar{position:absolute;top:0;left:0;right:0;z-index:5;display:flex;justify-content:center;gap:28px;padding:14px;background:linear-gradient(#000a,#0000)}
+.topbar button{background:none;border:0;color:#aaa;font-size:17px;font-weight:600;padding:4px 2px}
+.topbar button.on{color:#fff;border-bottom:2px solid #fff}
+.feed{height:100%;overflow-y:scroll;scroll-snap-type:y mandatory}
+.post{height:100%;scroll-snap-align:start;scroll-snap-stop:always;position:relative;background:#000}
+.post video{width:100%;height:100%;object-fit:contain;background:#000}
+.info{position:absolute;left:12px;right:80px;bottom:18px;text-shadow:0 1px 4px #000}
+.info .who{font-weight:800;font-size:17px;background:none;border:0;padding:0}
+.info p{margin:6px 0 0;font-size:15px;word-break:break-word}
+.acts{position:absolute;right:8px;bottom:18px;display:flex;flex-direction:column;gap:14px;align-items:center}
+.acts button{background:#0008;border:0;border-radius:50%;width:52px;height:52px;font-size:22px}
+.acts small{display:block;font-size:12px;margin-top:-4px}
+.acts div{text-align:center}
+.page{height:100%;overflow-y:auto;padding:16px}
+.empty{color:#888;text-align:center;padding:60px 20px}
+.card{border:1px solid #333;border-radius:12px;padding:14px;margin:12px 0;background:#0b0b0b}
+.avatar{width:96px;height:96px;border-radius:50%;object-fit:cover;background:#222;display:block;margin:0 auto 10px}
+.stats{display:flex;justify-content:space-around;margin:14px 0;text-align:center}
+.stats b{display:block;font-size:20px}
+.stats span{color:#999;font-size:13px}
+.row{display:flex;gap:10px;align-items:center;margin:8px 0}
+.row>*{flex:1}
+.vid{display:flex;gap:10px;align-items:center;border-bottom:1px solid #222;padding:10px 0}
+.vid video{width:70px;height:90px;object-fit:cover;background:#111;border-radius:8px}
+.vid div{flex:1;min-width:0;overflow:hidden}
+.vid p{margin:0;word-break:break-word;font-size:14px}
+.vid small{color:#999}
+#sheetbg{position:fixed;inset:0;background:#000a;z-index:20;display:flex;align-items:flex-end}
+#sheet{background:#111;width:100%;max-height:85dvh;overflow-y:auto;border-radius:18px 18px 0 0;padding:20px;display:flex;flex-direction:column;gap:10px}
+#sheet h3{margin:0 0 4px;font-size:22px}
+.opt{padding:14px;border-radius:10px;border:1px solid #555;background:none;text-align:center;font-size:16px}
+.cm{border-bottom:1px solid #222;padding:8px 0;font-size:15px;word-break:break-word}
+.cm b{display:block;font-size:13px;color:#aaa}
+#toast{position:fixed;left:16px;right:16px;bottom:90px;background:#fff;color:#000;padding:14px;border-radius:10px;z-index:50;text-align:center;font-weight:600}
+.err{color:#ff7b7b;font-size:14px;min-height:18px}
+.tag{display:inline-block;padding:2px 10px;border-radius:20px;border:1px solid #666;font-size:12px}
+</style>
+</head>
+<body>
+
+<div id="auth" hidden>
+  <div class="logo">MA VIE</div>
+  <div id="usernameWrap" hidden><input id="aName" placeholder="Nom d'utilisateur" autocomplete="username"></div>
+  <input id="aEmail" type="email" placeholder="E-mail" autocomplete="email">
+  <input id="aPass" type="password" placeholder="Mot de passe (6 caractères minimum)" autocomplete="current-password">
+  <div class="err" id="aErr"></div>
+  <button class="btn" id="aGo">Se connecter</button>
+  <button class="link" id="aSwitch">Pas de compte ? S'inscrire</button>
+</div>
+
+<div id="app" hidden>
+  <div id="view"></div>
+  <nav>
+    <button data-t="home" class="on">Accueil</button>
+    <button data-t="search">Recherche</button>
+    <button data-t="pub" class="plus">+</button>
+    <button data-t="me">Profil</button>
+  </nav>
+</div>
+
+<div id="sheetbg" hidden><div id="sheet"></div></div>
+<div id="toast" hidden></div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import { getAuth, onAuthStateChanged, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+import { getFirestore, collection, doc, getDoc, getDocs, setDoc, addDoc, updateDoc, deleteDoc, increment, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyDt_UcyL9pXwvfE-5NpOozMykCJh7zvvrs",
+  authDomain: "ma-vie-2b252.firebaseapp.com",
+  projectId: "ma-vie-2b252",
+  storageBucket: "ma-vie-2b252.firebasestorage.app",
+  messagingSenderId: "235933753646",
+  appId: "1:235933753646:web:91df8965e68affbf3f9abf"
+};
+const CLOUD = "gevaxyli", PRESET = "mavie_videos";
+const RATE = 100;      // FCFA pour 1000 vues (calcul de test)
+const MIN_WITHDRAW = 500;
+
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db = getFirestore(app);
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const errText = e => (e && (e.code || e.message)) ? (e.code ? e.code + " : " : "") + (e.message || "") : String(e);
+
+let me = null, myProfile = {}, tab = "home", feedMode = "foryou", signup = false;
+let allPosts = [];
+
+// ---------- petits outils ----------
+function toast(msg){ const t=$("#toast"); t.textContent=msg; t.hidden=false; clearTimeout(toast.t); toast.t=setTimeout(()=>t.hidden=true,3500); }
+function sheet(html){ $("#sheet").innerHTML=html; $("#sheetbg").hidden=false; }
+function closeSheet(){ $("#sheetbg").hidden=true; $("#sheet").innerHTML=""; }
+$("#sheetbg").addEventListener("click", e => { if(e.target.id==="sheetbg") closeSheet(); });
+const pUid = p => p.uid || p.userId || p.authorId || p.ownerId || "";
+const pUrl = p => p.url || p.videoUrl || p.video || "";
+const pCap = p => p.caption || p.desc || p.description || "";
+const pName = p => p.username || p.author || "créateur";
+const pTime = p => { const t = p.createdAt || p.timestamp || p.date; return t && t.seconds ? t.seconds : (typeof t==="number" ? t/1000 : 0); };
+
+async function loadPosts(){
+  const snap = await getDocs(collection(db,"posts"));
+  allPosts = snap.docs.map(d => ({id:d.id, ...d.data()})).filter(p => pUrl(p));
+  allPosts.sort((a,b) => pTime(b)-pTime(a));
+  return allPosts;
+}
+async function upload(file){
+  const fd = new FormData(); fd.append("file", file); fd.append("upload_preset", PRESET);
+  const r = await fetch(`https://api.cloudinary.com/v1_1/${CLOUD}/auto/upload`, {method:"POST", body:fd});
+  const j = await r.json();
+  if(!r.ok || !j.secure_url) throw new Error((j.error && j.error.message) || "Envoi impossible");
+  return j.secure_url;
+}
+
+// ---------- connexion ----------
+$("#aSwitch").onclick = () => {
+  signup = !signup;
+  $("#usernameWrap").hidden = !signup;
+  $("#aGo").textContent = signup ? "Créer mon compte" : "Se connecter";
+  $("#aSwitch").textContent = signup ? "Déjà un compte ? Se connecter" : "Pas de compte ? S'inscrire";
+  $("#aErr").textContent = "";
+};
+$("#aGo").onclick = async () => {
+  const email=$("#aEmail").value.trim(), pass=$("#aPass").value, name=$("#aName").value.trim();
+  $("#aErr").textContent = "";
+  try{
+    if(signup){
+      if(!name){ $("#aErr").textContent="Écris un nom d'utilisateur."; return; }
+      const c = await createUserWithEmailAndPassword(auth,email,pass);
+      await setDoc(doc(db,"users",c.user.uid), {username:name, bio:"", photoURL:"", createdAt:serverTimestamp()});
+    } else {
+      await signInWithEmailAndPassword(auth,email,pass);
+    }
+  }catch(e){
+    const m = {"auth/invalid-credential":"E-mail ou mot de passe incorrect.","auth/email-already-in-use":"Cet e-mail est déjà utilisé.","auth/weak-password":"Mot de passe trop court (6 caractères minimum).","auth/invalid-email":"E-mail invalide."}[e.code];
+    $("#aErr").textContent = m || errText(e);
+  }
+};
+
+onAuthStateChanged(auth, async u => {
+  me = u;
+  if(!u){ $("#app").hidden=true; $("#auth").hidden=false; return; }
+  try{
+    const s = await getDoc(doc(db,"users",u.uid));
+    if(s.exists()) myProfile = s.data();
+    else { myProfile = {username:(u.email||"membre").split("@")[0], bio:"", photoURL:""}; await setDoc(doc(db,"users",u.uid), myProfile); }
+  }catch(e){ myProfile = {username:(u.email||"membre").split("@")[0]}; }
+  $("#auth").hidden=true; $("#app").hidden=false;
+  go("home");
+});
+
+document.querySelectorAll("nav button").forEach(b => b.onclick = () => go(b.dataset.t));
+function go(t, arg){
+  tab = t;
+  document.querySelectorAll("nav button").forEach(b => b.classList.toggle("on", b.dataset.t===t));
+  if(t==="home") showHome();
+  else if(t==="search") showSearch();
+  else if(t==="pub") showPublish();
+  else if(t==="me") showProfile(me.uid);
+  else if(t==="user") showProfile(arg);
+}
+
+// ---------- accueil / fil ----------
+async function showHome(){
+  const v = $("#view");
+  v.innerHTML = `<div class="topbar"><button id="tF" class="${feedMode==="following"?"on":""}">Abonnements</button><button id="tP" class="${feedMode==="foryou"?"on":""}">Pour toi</button></div><div class="feed" id="feed"><div class="empty">Chargement…</div></div>`;
+  $("#tF").onclick = () => { feedMode="following"; showHome(); };
+  $("#tP").onclick = () => { feedMode="foryou"; showHome(); };
+  try{
+    let posts = await loadPosts();
+    if(feedMode==="following"){
+      const f = await getDocs(collection(db,"users",me.uid,"following"));
+      const ids = new Set(f.docs.map(d=>d.id));
+      posts = posts.filter(p => ids.has(pUid(p)));
+      if(!ids.size){ $("#feed").innerHTML = `<div class="empty">Vous ne suivez encore personne.</div>`; return; }
+    }
+    if(!posts.length){ $("#feed").innerHTML = `<div class="empty">Aucune vidéo pour l'instant. Appuie sur + pour publier.</div>`; return; }
+    renderFeed($("#feed"), posts);
+  }catch(e){ $("#feed").innerHTML = `<div class="empty">Erreur : ${esc(errText(e))}</div>`; }
+}
+
+function renderFeed(box, posts){
+  box.innerHTML = "";
+  const io = new IntersectionObserver(entries => {
+    entries.forEach(en => {
+      const el = en.target, vid = el.querySelector("video");
+      if(en.isIntersecting){
+        vid.play().catch(()=>{ vid.muted=true; vid.play().catch(()=>{}); });
+        clearTimeout(el._vt);
+        el._vt = setTimeout(() => countView(el.dataset.id, el), 1500);
+      } else { vid.pause(); clearTimeout(el._vt); }
+    });
+  }, {root:box, threshold:0.7});
+  posts.forEach(p => {
+    const el = document.createElement("div");
+    el.className = "post"; el.dataset.id = p.id;
+    const mine = pUid(p) === me.uid;
+    el.innerHTML = `<video src="${esc(pUrl(p))}" playsinline loop preload="metadata"></video>
+      <div class="info"><button class="who">@${esc(pName(p))}</button><p>${esc(pCap(p))}</p></div>
+      <div class="acts">
+        ${mine?"":`<button class="fol" title="Suivre">＋</button>`}
+        <div><button class="lk">♡</button><small class="lkn">0</small></div>
+        <div><button class="cmt">💬</button><small class="cmn">0</small></div>
+        <button class="shr">↗</button>
+        ${mine?"":`<button class="rep">⚑</button>`}
+      </div>`;
+    const vid = el.querySelector("video");
+    vid.onclick = () => vid.paused ? vid.play() : vid.pause();
+    el.querySelector(".who").onclick = () => go("user", pUid(p));
+    el.querySelector(".lk").onclick = () => toggleLike(p, el);
+    el.querySelector(".cmt").onclick = () => openComments(p, el);
+    el.querySelector(".shr").onclick = () => share(p);
+    if(!mine){
+      el.querySelector(".rep").onclick = () => openReport(p);
+      el.querySelector(".fol").onclick = () => toggleFollow(pUid(p), el.querySelector(".fol"));
+      refreshFollowBtn(pUid(p), el.querySelector(".fol"));
+    }
+    refreshCounts(p, el);
+    box.appendChild(el); io.observe(el);
+  });
+}
+
+async function refreshCounts(p, el){
+  try{
+    const l = await getDocs(collection(db,"posts",p.id,"likes"));
+    el.querySelector(".lkn").textContent = l.size;
+    el.querySelector(".lk").textContent = l.docs.some(d=>d.id===me.uid) ? "♥" : "♡";
+    const c = await getDocs(collection(db,"posts",p.id,"comments"));
+    el.querySelector(".cmn").textContent = c.size;
+  }catch(e){}
+}
+async function toggleLike(p, el){
+  const ref = doc(db,"posts",p.id,"likes",me.uid);
+  try{
+    const s = await getDoc(ref);
+    if(s.exists()) await deleteDoc(ref); else await setDoc(ref,{uid:me.uid,createdAt:serverTimestamp()});
+    refreshCounts(p, el);
+  }catch(e){ toast("J'aime impossible : "+errText(e)); }
+}
+async function countView(id, el){
+  if(el._counted) return; el._counted = true;
+  try{
+    const r = doc(db,"posts",id,"viewers",me.uid);
+    const s = await getDoc(r);
+    if(s.exists()) return;
+    await setDoc(r,{uid:me.uid,createdAt:serverTimestamp()});
+    await updateDoc(doc(db,"posts",id),{views:increment(1)});
+  }catch(e){}
+}
+async function refreshFollowBtn(uid, btn){
+  try{ const s = await getDoc(doc(db,"users",me.uid,"following",uid)); btn.textContent = s.exists() ? "✓" : "＋"; }catch(e){}
+}
+async function toggleFollow(uid, btn){
+  if(!uid || uid===me.uid) return;
+  const a = doc(db,"users",me.uid,"following",uid), b = doc(db,"users",uid,"followers",me.uid);
+  try{
+    const s = await getDoc(a);
+    if(s.exists()){ await deleteDoc(a); await deleteDoc(b); if(btn) btn.textContent="＋"; }
+    else { await setDoc(a,{createdAt:serverTimestamp()}); await setDoc(b,{createdAt:serverTimestamp()}); if(btn) btn.textContent="✓"; }
+  }catch(e){ toast("Abonnement impossible : "+errText(e)); }
+}
+function share(p){
+  const url = location.href.split("#")[0];
+  if(navigator.share) navigator.share({title:"Ma Vie", text:pCap(p), url}).catch(()=>{});
+  else if(navigator.clipboard) navigator.clipboard.writeText(url).then(()=>toast("Lien copié"));
+}
+
+// ---------- commentaires ----------
+async function openComments(p, el){
+  sheet(`<h3>Commentaires</h3><div id="cmList">Chargement…</div>
+    <input id="cmIn" placeholder="Écris un commentaire…"><button class="btn" id="cmGo">Envoyer</button><button class="link" id="cmX">Fermer</button>`);
+  $("#cmX").onclick = closeSheet;
+  async function load(){
+    try{
+      const s = await getDocs(collection(db,"posts",p.id,"comments"));
+      const list = s.docs.map(d=>d.data()).sort((a,b)=>pTime(a)-pTime(b));
+      $("#cmList").innerHTML = list.length ? list.map(c=>`<div class="cm"><b>@${esc(c.username||"membre")}</b>${esc(c.text)}</div>`).join("") : `<div class="empty">Pas encore de commentaire.</div>`;
+    }catch(e){ $("#cmList").textContent = "Erreur : "+errText(e); }
+  }
+  $("#cmGo").onclick = async () => {
+    const t = $("#cmIn").value.trim(); if(!t) return;
+    try{
+      await addDoc(collection(db,"posts",p.id,"comments"),{uid:me.uid,username:myProfile.username||"membre",text:t,createdAt:serverTimestamp()});
+      $("#cmIn").value=""; await load(); refreshCounts(p, el);
+    }catch(e){ toast("Commentaire impossible : "+errText(e)); }
+  };
+  load();
+}
+
+// ---------- signaler ----------
+function openReport(p){
+  const motifs = ["Contenu inapproprié","Violence ou danger","Arnaque ou fausse information","Spam ou faux compte","Autre"];
+  sheet(`<h3>Signaler cette vidéo</h3><div style="color:#aaa">Pourquoi signales-tu cette vidéo ?</div>
+    ${motifs.map((m,i)=>`<button class="opt" data-i="${i}">${m}</button>`).join("")}<button class="link" id="rX">Annuler</button>`);
+  $("#rX").onclick = closeSheet;
+  document.querySelectorAll("#sheet .opt").forEach(b => b.onclick = async () => {
+    try{
+      await setDoc(doc(db,"reports", p.id+"_"+me.uid), {postId:p.id, reporterUid:me.uid, reason:motifs[b.dataset.i], createdAt:serverTimestamp()});
+      closeSheet(); toast("Merci, signalement envoyé.");
+    }catch(e){
+      sheet(`<h3>Signalement impossible</h3><div class="err" style="min-height:0">${esc(errText(e))}</div><button class="btn alt" id="rX2">Fermer</button>`);
+      $("#rX2").onclick = closeSheet;
+    }
+  });
+}
+
+// ---------- recherche ----------
+function showSearch(){
+  $("#view").innerHTML = `<div class="page"><input id="q" placeholder="Chercher un créateur, un mot ou un #hashtag" autocomplete="off"><div id="res"></div></div>`;
+  let timer;
+  $("#q").oninput = () => { clearTimeout(timer); timer = setTimeout(runSearch, 300); };
+}
+async function runSearch(){
+  const q = $("#q").value.trim().toLowerCase(), res = $("#res");
+  if(!q){ res.innerHTML=""; return; }
+  res.innerHTML = `<div class="empty">Recherche…</div>`;
+  try{
+    const us = await getDocs(collection(db,"users"));
+    const users = us.docs.map(d=>({id:d.id,...d.data()})).filter(u => (u.username||"").toLowerCase().includes(q));
+    const posts = (await loadPosts()).filter(p => (pCap(p)+" "+pName(p)).toLowerCase().includes(q));
+    let h = "";
+    if(users.length) h += `<h3>Créateurs</h3>` + users.map(u=>`<div class="vid" data-u="${u.id}" style="cursor:pointer"><div><b>@${esc(u.username)}</b></div></div>`).join("");
+    if(posts.length) h += `<h3>Vidéos</h3>` + posts.map(p=>`<div class="vid" data-u="${esc(pUid(p))}" style="cursor:pointer"><video src="${esc(pUrl(p))}" preload="metadata" muted></video><div><b>@${esc(pName(p))}</b><p>${esc(pCap(p))}</p></div></div>`).join("");
+    res.innerHTML = h || `<div class="empty">Aucun résultat.</div>`;
+    res.querySelectorAll("[data-u]").forEach(x => x.onclick = () => { if(x.dataset.u) go("user", x.dataset.u); });
+  }catch(e){ res.innerHTML = `<div class="empty">Erreur : ${esc(errText(e))}</div>`; }
+}
+
+// ---------- publier ----------
+function showPublish(){
+  $("#view").innerHTML = `<div class="page"><h2>Publier une vidéo</h2>
+    <label class="btn alt" style="display:block;text-align:center">Choisir une vidéo du téléphone<input id="pf" type="file" accept="video/*" hidden></label>
+    <div id="pfn" style="color:#aaa;margin:8px 0"></div>
+    <div style="color:#888;margin:6px 0">ou colle un lien .mp4 :</div>
+    <input id="pl" placeholder="https://…mp4">
+    <textarea id="pc" rows="3" placeholder="Description avec #hashtags" style="margin-top:10px"></textarea>
+    <div class="err" id="pe"></div>
+    <button class="btn" id="pg">Publier</button></div>`;
+  $("#pf").onchange = () => { const f=$("#pf").files[0]; $("#pfn").textContent = f ? "Vidéo choisie : "+f.name : ""; };
+  $("#pg").onclick = async () => {
+    const f=$("#pf").files[0], link=$("#pl").value.trim(), cap=$("#pc").value.trim(), btn=$("#pg");
+    if(!f && !link){ $("#pe").textContent="Choisis une vidéo ou colle un lien."; return; }
+    btn.disabled=true; btn.textContent="Envoi en cours… patiente"; $("#pe").textContent="";
+    try{
+      const url = f ? await upload(f) : link;
+      await addDoc(collection(db,"posts"),{uid:me.uid,username:myProfile.username||"membre",url,caption:cap,views:0,createdAt:serverTimestamp()});
+      toast("Vidéo publiée !"); go("me");
+    }catch(e){ $("#pe").textContent = errText(e); btn.disabled=false; btn.textContent="Publier"; }
+  };
+}
+
+// ---------- profil ----------
+async function showProfile(uid){
+  const v = $("#view"), mine = uid===me.uid;
+  v.innerHTML = `<div class="page"><div class="empty">Chargement…</div></div>`;
+  try{
+    const us = await getDoc(doc(db,"users",uid));
+    const u = us.exists() ? us.data() : {username:"créateur"};
+    if(mine) myProfile = u.username ? u : myProfile;
+    const [fo, fi] = await Promise.all([getDocs(collection(db,"users",uid,"followers")), getDocs(collection(db,"users",uid,"following"))]);
+    const posts = (await loadPosts()).filter(p => pUid(p)===uid);
+    const views = posts.reduce((s,p)=>s+(Number(p.views)||0),0);
+    let h = `<img class="avatar" src="${esc(u.photoURL||"")}" onerror="this.style.visibility='hidden'">
+      <div style="text-align:center"><b style="font-size:20px">@${esc(u.username||"créateur")}</b><div style="color:#aaa;margin-top:4px">${esc(u.bio||"")}</div></div>
+      <div class="stats"><div><b>${posts.length}</b><span>Vidéos</span></div><div><b>${fo.size}</b><span>Abonnés</span></div><div><b>${fi.size}</b><span>Abonnements</span></div><div><b>${views}</b><span>Vues</span></div></div>`;
+    if(mine){
+      h += `<div class="row"><button class="btn alt" id="edit">Modifier mon profil</button><button class="btn alt" id="out">Déconnexion</button></div><div id="gains"></div>`;
+    } else {
+      h += `<button class="btn" id="fbtn" style="width:100%">Suivre</button>`;
+    }
+    h += `<h3>${mine?"Mes vidéos":"Vidéos"}</h3>`;
+    h += posts.length ? posts.map(p=>`<div class="vid"><video src="${esc(pUrl(p))}" controls preload="metadata" playsinline></video><div><p>${esc(pCap(p))}</p><small>${Number(p.views)||0} vues</small>${mine?`<br><button class="btn alt small del" data-id="${p.id}" style="margin-top:6px">Supprimer</button>`:""}</div></div>`).join("") : `<div class="empty">Aucune vidéo.</div>`;
+    v.innerHTML = `<div class="page">${h}</div>`;
+    if(mine){
+      $("#out").onclick = () => signOut(auth);
+      $("#edit").onclick = () => editProfile(u);
+      v.querySelectorAll(".del").forEach(b => b.onclick = async () => {
+        if(!confirm("Supprimer cette vidéo ?")) return;
+        try{ await deleteDoc(doc(db,"posts",b.dataset.id)); showProfile(uid); }catch(e){ toast("Suppression impossible : "+errText(e)); }
+      });
+      showGains(views);
+    } else {
+      const fb = $("#fbtn");
+      const set = async () => { try{ const s=await getDoc(doc(db,"users",me.uid,"following",uid)); fb.textContent = s.exists()?"Abonné":"Suivre"; }catch(e){} };
+      fb.onclick = async () => { await toggleFollow(uid, null); showProfile(uid); };
+      set();
+    }
+  }catch(e){ v.innerHTML = `<div class="page"><div class="empty">Erreur : ${esc(errText(e))}</div></div>`; }
+}
+
+function editProfile(u){
+  sheet(`<h3>Modifier mon profil</h3>
+    <label class="btn alt" style="text-align:center">Choisir une photo de la galerie<input id="ef" type="file" accept="image/*" hidden></label>
+    <div id="efn" style="color:#aaa"></div>
+    <input id="en" placeholder="Nom d'utilisateur" value="${esc(u.username||"")}">
+    <textarea id="eb" rows="3" placeholder="Description">${esc(u.bio||"")}</textarea>
+    <div class="err" id="ee"></div>
+    <button class="btn" id="es">Enregistrer</button><button class="link" id="ex">Annuler</button>`);
+  $("#ex").onclick = closeSheet;
+  $("#ef").onchange = () => { const f=$("#ef").files[0]; $("#efn").textContent = f ? "Photo choisie : "+f.name : ""; };
+  $("#es").onclick = async () => {
+    const name=$("#en").value.trim(), bio=$("#eb").value.trim(), f=$("#ef").files[0], b=$("#es");
+    if(!name){ $("#ee").textContent="Le nom ne peut pas être vide."; return; }
+    b.disabled=true; b.textContent="Enregistrement…";
+    try{
+      const data = {username:name, bio};
+      if(f) data.photoURL = await upload(f);
+      await setDoc(doc(db,"users",me.uid), data, {merge:true});
+      myProfile = {...myProfile, ...data};
+      closeSheet(); showProfile(me.uid);
+    }catch(e){ $("#ee").textContent = errText(e); b.disabled=false; b.textContent="Enregistrer"; }
+  };
+}
+
+// ---------- gains et retraits ----------
+async function showGains(views){
+  const box = $("#gains"); if(!box) return;
+  let reqs = [];
+  try{
+    const s = await getDocs(collection(db,"withdrawals"));
+    reqs = s.docs.map(d=>({id:d.id,...d.data()})).filter(r => r.uid===me.uid || (!r.uid && r.username===myProfile.username));
+    reqs.sort((a,b)=>pTime(b)-pTime(a));
+  }catch(e){}
+  const earned = Math.floor(views*RATE/1000);
+  const taken = reqs.filter(r=>r.status!=="Refusé").reduce((s,r)=>s+(Number(r.amount)||0),0);
+  const bal = Math.max(0, earned-taken);
+  box.innerHTML = `<div class="card"><b>Mes gains (estimation)</b>
+    <div style="font-size:30px;font-weight:800;margin:6px 0">${bal} FCFA</div>
+    <div style="color:#999;font-size:13px">${views} vues · calcul de test : ${RATE} FCFA pour 1 000 vues</div>
+    <div style="color:#999;font-size:13px;margin:6px 0">Retrait possible à partir de ${MIN_WITHDRAW} FCFA</div>
+    <button class="btn" id="wd" ${bal<MIN_WITHDRAW?"disabled style='opacity:.4'":""} style="width:100%">Retirer</button></div>
+    <div class="card"><b>Mes demandes de retrait</b>${reqs.length ? reqs.map(r=>`<div class="cm">${esc(r.amount)} FCFA · ${esc(r.method)} <span class="tag">${esc(r.status||"En attente")}</span></div>`).join("") : `<div style="color:#888;margin-top:6px">Aucune demande.</div>`}</div>`;
+  const wd = $("#wd");
+  if(bal>=MIN_WITHDRAW) wd.onclick = () => {
+    sheet(`<h3>Retirer de l'argent</h3>
+      <select id="wm"><option>Orange Money</option><option>Wave</option></select>
+      <input id="wp" type="tel" placeholder="Numéro de téléphone">
+      <input id="wa" type="number" placeholder="Montant (max ${bal} FCFA)" value="${bal}">
+      <div class="err" id="we"></div>
+      <button class="btn" id="wg">Envoyer la demande</button><button class="link" id="wx">Annuler</button>`);
+    $("#wx").onclick = closeSheet;
+    $("#wg").onclick = async () => {
+      const amount = Number($("#wa").value), phone = $("#wp").value.trim(), method = $("#wm").value;
+      if(!phone){ $("#we").textContent="Écris ton numéro."; return; }
+      if(!(amount>=MIN_WITHDRAW) || amount>bal){ $("#we").textContent=`Le montant doit être entre ${MIN_WITHDRAW} et ${bal} FCFA.`; return; }
+      try{
+        await addDoc(collection(db,"withdrawals"),{uid:me.uid,username:myProfile.username||"membre",amount,method,phone,status:"En attente",createdAt:serverTimestamp()});
+        closeSheet(); toast("Demande envoyée (En attente)"); showProfile(me.uid);
+      }catch(e){ $("#we").textContent = errText(e); }
+    };
+  };
+}
+</script>
+</body>
+</html>
