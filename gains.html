@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#000000">
+<title>Mes gains - Ma Vie</title>
+<style>
+  :root { --bg:#000; --card:#141414; --line:#262626; --text:#fff; --muted:#9a9a9a; }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--text); font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif; }
+  header { position:sticky; top:0; z-index:5; display:flex; align-items:center; gap:12px; padding:14px 16px; background:var(--bg); border-bottom:1px solid var(--line); }
+  header a { color:var(--text); text-decoration:none; font-size:24px; line-height:1; padding:4px 8px; }
+  header h1 { margin:0; font-size:18px; letter-spacing:.5px; }
+  main { padding:16px; max-width:560px; margin:0 auto; padding-bottom:48px; }
+  .muted { color:var(--muted); font-size:14px; }
+  .balance { background:var(--card); border:1px solid var(--line); border-radius:18px; padding:22px 18px; text-align:center; }
+  .balance .label { color:var(--muted); font-size:14px; }
+  .balance .amount { font-size:42px; font-weight:800; margin:6px 0 2px; }
+  .balance .amount small { font-size:18px; font-weight:600; color:var(--muted); }
+  .bar { height:8px; background:var(--line); border-radius:99px; overflow:hidden; margin:14px 0 6px; }
+  .bar > div { height:100%; background:#fff; width:0; border-radius:99px; }
+  .btn { display:block; width:100%; margin-top:14px; padding:14px; border-radius:12px; border:0; background:#fff; color:#000; font-size:16px; font-weight:700; text-align:center; text-decoration:none; }
+  .btn.off { background:#2a2a2a; color:#777; }
+  .grid { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin:12px 0; }
+  .stat { background:var(--card); border:1px solid var(--line); border-radius:14px; padding:14px; }
+  .stat b { display:block; font-size:22px; margin-top:4px; }
+  h2 { font-size:16px; margin:24px 0 10px; }
+  .row { display:flex; justify-content:space-between; align-items:center; gap:10px; background:var(--card); border:1px solid var(--line); border-radius:12px; padding:12px 14px; margin-bottom:8px; }
+  .row .t { min-width:0; }
+  .row .t div:first-child { white-space:nowrap; overflow:hidden; text-overflow:ellipsis; font-size:15px; }
+  .row .t div:last-child { color:var(--muted); font-size:13px; margin-top:2px; }
+  .row .r { text-align:right; font-weight:700; white-space:nowrap; }
+  .badge { display:inline-block; font-size:12px; padding:3px 9px; border-radius:99px; border:1px solid #444; margin-top:4px; font-weight:600; }
+  .badge.ok { background:#fff; color:#000; border-color:#fff; }
+  .note { margin-top:22px; padding:12px 14px; border:1px dashed #444; border-radius:12px; color:var(--muted); font-size:13px; line-height:1.5; }
+  .center { text-align:center; padding:40px 10px; }
+</style>
+</head>
+<body>
+<header><a href="./" aria-label="Retour">←</a><h1>Mes gains</h1></header>
+<main id="app"><p class="muted center">Chargement…</p></main>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+import { getFirestore, collection, getDocs, query, where } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyDt_UcyL9pXwvfE-5NpOozMykCJh7zvvrs",
+  authDomain: "ma-vie-2b252.firebaseapp.com",
+  projectId: "ma-vie-2b252",
+  storageBucket: "ma-vie-2b252.firebasestorage.app",
+  messagingSenderId: "235933753646",
+  appId: "1:235933753646:web:91df8965e68affbf3f9abf"
+};
+
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db = getFirestore(app);
+
+// Calcul de TEST : 100 FCFA pour 1 000 vues. Retrait possible à partir de 500 FCFA.
+const FCFA_PAR_1000_VUES = 100;
+const MINIMUM_RETRAIT = 500;
+
+const $app = document.getElementById("app");
+const fmt = (n) => Number(n || 0).toLocaleString("fr-FR");
+
+function el(tag, cls, text) {
+  const e = document.createElement(tag);
+  if (cls) e.className = cls;
+  if (text !== undefined) e.textContent = text;
+  return e;
+}
+
+function showMessage(text, linkText, href) {
+  $app.innerHTML = "";
+  const box = el("div", "center");
+  box.appendChild(el("p", "muted", text));
+  if (linkText) {
+    const a = el("a", "btn", linkText);
+    a.href = href;
+    box.appendChild(a);
+  }
+  $app.appendChild(box);
+}
+
+function isMine(p, uid) {
+  const keys = ["uid", "userId", "authorUid", "ownerUid", "authorId", "creatorUid"];
+  return keys.some((k) => p[k] === uid);
+}
+
+function dateText(v) {
+  try {
+    const d = v && v.toDate ? v.toDate() : null;
+    return d ? d.toLocaleDateString("fr-FR") : "";
+  } catch (e) { return ""; }
+}
+
+async function loadWithdrawals(uid) {
+  const keys = ["uid", "userId"];
+  for (const k of keys) {
+    try {
+      const snap = await getDocs(query(collection(db, "withdrawals"), where(k, "==", uid)));
+      if (!snap.empty) return { list: snap.docs.map((d) => d.data()), ok: true };
+    } catch (e) { /* on essaie la suite */ }
+  }
+  return { list: [], ok: true };
+}
+
+async function render(user) {
+  $app.innerHTML = "";
+  $app.appendChild(el("p", "muted center", "Calcul de tes gains…"));
+
+  let mine = [];
+  try {
+    const snap = await getDocs(collection(db, "posts"));
+    mine = snap.docs.map((d) => d.data()).filter((p) => isMine(p, user.uid));
+  } catch (e) {
+    showMessage("Impossible de lire tes vidéos pour le moment. Réessaie dans un instant.", "Retour à Ma Vie", "./");
+    return;
+  }
+
+  const wd = await loadWithdrawals(user.uid);
+
+  mine.sort((a, b) => (Number(b.views) || 0) - (Number(a.views) || 0));
+  const totalViews = mine.reduce((s, p) => s + (Number(p.views) || 0), 0);
+  const totalEarned = Math.floor((totalViews * FCFA_PAR_1000_VUES) / 1000);
+  const refused = ["refusé", "refuse", "rejeté", "rejete"];
+  const reserved = wd.list
+    .filter((w) => !refused.includes(String(w.status || "").toLowerCase()))
+    .reduce((s, w) => s + (Number(w.amount) || 0), 0);
+  const balance = Math.max(0, totalEarned - reserved);
+  const canWithdraw = balance >= MINIMUM_RETRAIT;
+
+  $app.innerHTML = "";
+
+  // Solde
+  const bal = el("div", "balance");
+  bal.appendChild(el("div", "label", "Solde disponible (estimation)"));
+  const amt = el("div", "amount", fmt(balance) + " ");
+  amt.appendChild(el("small", "", "FCFA"));
+  bal.appendChild(amt);
+  const bar = el("div", "bar");
+  const fill = document.createElement("div");
+  fill.style.width = Math.min(100, Math.round((balance / MINIMUM_RETRAIT) * 100)) + "%";
+  bar.appendChild(fill);
+  bal.appendChild(bar);
+  bal.appendChild(el("div", "muted", canWithdraw
+    ? "Tu peux demander un retrait."
+    : "Retrait possible à partir de " + fmt(MINIMUM_RETRAIT) + " FCFA (il te manque " + fmt(MINIMUM_RETRAIT - balance) + " FCFA)."));
+  const btn = el("a", "btn" + (canWithdraw ? "" : " off"), "Retirer mon argent");
+  if (canWithdraw) { btn.href = "./"; }
+  bal.appendChild(btn);
+  if (canWithdraw) bal.appendChild(el("div", "muted", "Ouvre ton profil dans Ma Vie et appuie sur « Retirer »."));
+  $app.appendChild(bal);
+
+  // Chiffres
+  const grid = el("div", "grid");
+  const s1 = el("div", "stat", "Vues totales"); s1.appendChild(el("b", "", fmt(totalViews)));
+  const s2 = el("div", "stat", "Gains totaux"); s2.appendChild(el("b", "", fmt(totalEarned) + " FCFA"));
+  const s3 = el("div", "stat", "Vidéos publiées"); s3.appendChild(el("b", "", fmt(mine.length)));
+  const s4 = el("div", "stat", "Déjà demandé"); s4.appendChild(el("b", "", fmt(reserved) + " FCFA"));
+  [s1, s2, s3, s4].forEach((s) => grid.appendChild(s));
+  $app.appendChild(grid);
+
+  // Gains par vidéo
+  $app.appendChild(el("h2", "", "Gains par vidéo"));
+  if (!mine.length) {
+    $app.appendChild(el("p", "muted", "Tu n'as pas encore de vidéo. Publie ta première vidéo avec le bouton + dans Ma Vie."));
+  }
+  mine.forEach((p) => {
+    const views = Number(p.views) || 0;
+    const row = el("div", "row");
+    const t = el("div", "t");
+    const title = (p.title || p.desc || p.description || p.caption || "Vidéo").toString().slice(0, 60);
+    t.appendChild(el("div", "", title));
+    t.appendChild(el("div", "", fmt(views) + " vues" + (dateText(p.createdAt) ? " · " + dateText(p.createdAt) : "")));
+    row.appendChild(t);
+    row.appendChild(el("div", "r", fmt(Math.floor((views * FCFA_PAR_1000_VUES) / 1000)) + " FCFA"));
+    $app.appendChild(row);
+  });
+
+  // Historique des retraits
+  $app.appendChild(el("h2", "", "Historique des retraits"));
+  if (!wd.list.length) {
+    $app.appendChild(el("p", "muted", "Aucune demande de retrait pour le moment."));
+  }
+  wd.list
+    .slice()
+    .sort((a, b) => ((b.createdAt && b.createdAt.seconds) || 0) - ((a.createdAt && a.createdAt.seconds) || 0))
+    .forEach((w) => {
+      const row = el("div", "row");
+      const t = el("div", "t");
+      t.appendChild(el("div", "", (w.method || "Retrait") + (w.phone ? " · " + w.phone : "")));
+      t.appendChild(el("div", "", dateText(w.createdAt)));
+      row.appendChild(t);
+      const r = el("div", "r", fmt(w.amount) + " FCFA");
+      r.appendChild(document.createElement("br"));
+      const st = String(w.status || "En attente");
+      r.appendChild(el("span", "badge" + (st.toLowerCase().startsWith("pay") ? " ok" : ""), st));
+      row.appendChild(r);
+      $app.appendChild(row);
+    });
+
+  $app.appendChild(el("div", "note",
+    "Ces gains sont une estimation de test (" + FCFA_PAR_1000_VUES + " FCFA pour 1 000 vues). " +
+    "Les paiements ne sont pas automatiques : les demandes de retrait sont payées à la main."));
+}
+
+onAuthStateChanged(auth, (user) => {
+  if (!user) {
+    showMessage("Connecte-toi d'abord dans Ma Vie pour voir tes gains.", "Ouvrir Ma Vie", "./");
+    return;
+  }
+  render(user).catch(() => showMessage("Une erreur est arrivée. Réessaie.", "Retour à Ma Vie", "./"));
+});
+</script>
+</body>
+</html>
