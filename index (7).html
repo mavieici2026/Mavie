@@ -1,0 +1,517 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#000000">
+<title>Ma Vie</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon.svg">
+<style>
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+html,body{height:100%;background:#000;color:#fff;font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+[hidden]{display:none!important}
+a{color:inherit}
+#auth{min-height:100dvh;display:flex;flex-direction:column;justify-content:center;padding:24px;max-width:420px;margin:auto}
+.logo{font-size:34px;font-weight:800;letter-spacing:3px;text-align:center;margin-bottom:6px}
+.sub{color:#888;text-align:center;margin-bottom:24px}
+input,textarea,select{width:100%;padding:12px;border-radius:10px;border:1px solid #333;background:#111;color:#fff;font-size:16px;margin:6px 0;font-family:inherit}
+.btn{display:block;width:100%;padding:13px;border:0;border-radius:10px;background:#fff;color:#000;font-weight:700;font-size:16px;margin:10px 0}
+.btn.alt{background:#222;color:#fff}
+.btn.sm{display:inline-block;width:auto;padding:8px 14px;font-size:14px;margin:4px 4px 4px 0}
+.btn:disabled{opacity:.35}
+.link{background:none;border:0;color:#aaa;text-decoration:underline;padding:10px;width:100%;font-size:14px}
+#app{height:100dvh;display:flex;flex-direction:column}
+main{flex:1;position:relative;overflow:hidden}
+.view{position:absolute;inset:0;overflow-y:auto}
+.pad{padding:16px}
+nav{height:calc(58px + env(safe-area-inset-bottom));padding-bottom:env(safe-area-inset-bottom);display:flex;border-top:1px solid #222;background:#000}
+nav a,nav button{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;font-size:11px;color:#888;background:none;border:0;text-decoration:none;gap:2px}
+nav span{font-size:20px;line-height:1}
+nav .on{color:#fff}
+#v-home{overflow:hidden}
+.tabs{position:absolute;top:0;left:0;right:0;display:flex;justify-content:center;gap:26px;padding:12px;z-index:5;background:linear-gradient(#000b,transparent)}
+.tabs button{background:none;border:0;color:#aaa;font-size:16px;font-weight:600;padding:4px 2px}
+.tabs .on{color:#fff;border-bottom:2px solid #fff}
+#feed{height:100%;overflow-y:scroll;scroll-snap-type:y mandatory}
+.card{height:100%;scroll-snap-align:start;scroll-snap-stop:always;position:relative;background:#000}
+.card video{width:100%;height:100%;object-fit:contain;background:#000}
+.side{position:absolute;right:10px;bottom:90px;display:flex;flex-direction:column;gap:16px;align-items:center}
+.side button{background:#0008;border:0;color:#fff;border-radius:50%;width:48px;height:48px;font-size:22px}
+.side small{display:block;font-size:11px;text-align:center;margin-top:2px}
+.info{position:absolute;left:12px;right:80px;bottom:16px;text-shadow:0 1px 3px #000}
+.info b{cursor:pointer}
+.info p{margin-top:6px;font-size:14px;max-height:60px;overflow:hidden}
+.fbtn{margin-left:8px;border:1px solid #fff;background:#0006;color:#fff;border-radius:6px;padding:3px 10px;font-size:13px}
+.empty{color:#888;text-align:center;padding:90px 24px}
+.sheet{position:fixed;inset:0;background:#000b;z-index:50;display:flex;align-items:flex-end}
+.sheet>div{background:#111;width:100%;max-height:82dvh;overflow:auto;border-radius:16px 16px 0 0;padding:16px}
+.row{display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid #222}
+.av{width:44px;height:44px;border-radius:50%;background:#333;object-fit:cover;flex:none;display:flex;align-items:center;justify-content:center;font-weight:700}
+.big{width:90px;height:90px;font-size:32px}
+.stats{display:flex;justify-content:space-around;text-align:center;margin:16px 0}
+.stats b{display:block;font-size:18px}
+.stats span{color:#888;font-size:12px}
+.card2{background:#111;border:1px solid #222;border-radius:12px;padding:14px;margin:14px 0}
+.muted{color:#888;font-size:13px}
+.vid{margin:14px 0;border-bottom:1px solid #222;padding-bottom:12px}
+.vid video{width:100%;max-height:300px;background:#000;border-radius:10px}
+.tag{display:inline-block;padding:2px 8px;border-radius:6px;background:#222;font-size:12px}
+.bar{height:8px;background:#222;border-radius:4px;overflow:hidden;margin:8px 0}
+.bar i{display:block;height:100%;width:0;background:#fff}
+#toast{position:fixed;left:16px;right:16px;bottom:80px;background:#fff;color:#000;padding:12px;border-radius:10px;z-index:99;text-align:center;font-weight:600}
+h2{margin:6px 0 10px}
+</style>
+</head>
+<body>
+
+<div id="auth" hidden>
+  <div class="logo">MA VIE</div>
+  <div class="sub" id="authSub">Connecte-toi pour continuer</div>
+  <input id="aName" placeholder="Nom d'utilisateur" hidden>
+  <input id="aMail" type="email" placeholder="Adresse e-mail" autocomplete="email">
+  <input id="aPass" type="password" placeholder="Mot de passe (6 caractères minimum)" autocomplete="current-password">
+  <button class="btn" id="aGo">Se connecter</button>
+  <button class="link" id="aSwitch">Pas de compte ? Créer un compte</button>
+  <p style="text-align:center"><a class="muted" href="confidentialite.html">Politique de confidentialité</a></p>
+</div>
+
+<div id="app" hidden>
+  <main>
+    <section class="view" id="v-home">
+      <div class="tabs"><button id="tFor" class="on">Pour toi</button><button id="tFol">Abonnements</button></div>
+      <div id="feed"></div>
+    </section>
+    <section class="view pad" id="v-search" hidden>
+      <h2>Recherche</h2>
+      <input id="q" placeholder="Créateur, mot ou #hashtag">
+      <div id="sres"></div>
+    </section>
+    <section class="view pad" id="v-publish" hidden>
+      <h2>Publier une vidéo</h2>
+      <p class="muted">Vidéo de 2 secondes à moins de 30 minutes.</p>
+      <button class="btn alt" id="pPick">📱 Choisir une vidéo du téléphone</button>
+      <input type="file" id="pFile" accept="video/*" hidden>
+      <p class="muted" id="pName"></p>
+      <input id="pLink" placeholder="ou colle un lien de vidéo (.mp4)">
+      <textarea id="pDesc" rows="3" placeholder="Description avec #hashtags"></textarea>
+      <div class="bar" id="pBar" hidden><i id="pBarI"></i></div>
+      <button class="btn" id="pGo">Publier</button>
+    </section>
+    <section class="view pad" id="v-profile" hidden></section>
+  </main>
+  <nav>
+    <button data-go="home" class="on"><span>🏠</span>Accueil</button>
+    <button data-go="search"><span>🔍</span>Recherche</button>
+    <button data-go="publish"><span>➕</span>Publier</button>
+    <a href="gains.html"><span>💰</span>Gains</a>
+    <button data-go="profile"><span>👤</span>Profil</button>
+  </nav>
+</div>
+
+<div class="sheet" id="sheet" hidden><div id="sheetBox"></div></div>
+<div id="toast" hidden></div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import { getAuth, onAuthStateChanged, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+import { getFirestore, collection, doc, getDoc, getDocs, setDoc, addDoc, updateDoc, deleteDoc, query, where, serverTimestamp, increment } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyDt_UcyL9pXwvfE-5NpOozMykCJh7zvvrs",
+  authDomain: "ma-vie-2b252.firebaseapp.com",
+  projectId: "ma-vie-2b252",
+  storageBucket: "ma-vie-2b252.firebasestorage.app",
+  messagingSenderId: "235933753646",
+  appId: "1:235933753646:web:91df8965e68affbf3f9abf"
+};
+const CLOUD = "gevaxyli", PRESET = "mavie_videos";
+const RATE = 100, MIN_WITHDRAW = 500; // 100 FCFA pour 1000 vues (calcul de test)
+
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db = getFirestore(app);
+
+const $ = id => document.getElementById(id);
+const esc = s => String(s == null ? "" : s).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const errText = e => (e && e.code === "permission-denied") ? "Permission refusée par les règles Firestore" : ((e && e.message) || "Erreur");
+let toastT;
+function toast(m){ const t=$("toast"); t.textContent=m; t.hidden=false; clearTimeout(toastT); toastT=setTimeout(()=>t.hidden=true,3500); }
+
+let me=null, users={}, posts=[], following=new Set(), tab="for", viewed=new Set(), profileUid=null, pickedFile=null;
+
+const puid = p => p.uid || p.userId || p.ownerId || p.authorId || "";
+const vurl = p => p.url || p.videoUrl || "";
+const vdesc = p => p.desc || p.description || p.caption || "";
+const pname = p => (users[puid(p)] && users[puid(p)].username) || p.username || "créateur";
+const tsOf = p => { const c=p.createdAt; if(!c) return 0; if(c.seconds) return c.seconds; if(typeof c==="number") return c>1e12?c/1000:c; return 0; };
+const initial = n => esc((n||"?").trim().charAt(0).toUpperCase());
+function avatar(uid, cls){ const u=users[uid]||{}; return u.photoURL ? `<img class="av ${cls||""}" src="${esc(u.photoURL)}" alt="">` : `<div class="av ${cls||""}">${initial(u.username)}</div>`; }
+
+/* ---------- Connexion ---------- */
+let signup=false;
+function authMode(){
+  $("aName").hidden=!signup;
+  $("aGo").textContent = signup ? "Créer mon compte" : "Se connecter";
+  $("aSwitch").textContent = signup ? "J'ai déjà un compte" : "Pas de compte ? Créer un compte";
+  $("authSub").textContent = signup ? "Crée ton compte gratuit" : "Connecte-toi pour continuer";
+}
+$("aSwitch").onclick=()=>{ signup=!signup; authMode(); };
+$("aGo").onclick=async()=>{
+  const mail=$("aMail").value.trim(), pass=$("aPass").value, name=$("aName").value.trim();
+  if(!mail||!pass) return toast("Écris ton e-mail et ton mot de passe");
+  if(signup && !name) return toast("Choisis un nom d'utilisateur");
+  $("aGo").disabled=true;
+  try{
+    if(signup){
+      const c=await createUserWithEmailAndPassword(auth,mail,pass);
+      await setDoc(doc(db,"users",c.user.uid),{username:name,bio:"",photoURL:"",createdAt:serverTimestamp()});
+    } else {
+      await signInWithEmailAndPassword(auth,mail,pass);
+    }
+  }catch(e){
+    const m={"auth/invalid-credential":"E-mail ou mot de passe incorrect","auth/email-already-in-use":"Cet e-mail est déjà utilisé","auth/weak-password":"Mot de passe trop court (6 caractères minimum)","auth/invalid-email":"E-mail non valide"}[e.code];
+    toast(m||errText(e));
+  }
+  $("aGo").disabled=false;
+};
+
+onAuthStateChanged(auth, async u=>{
+  me=u;
+  if(!u){ $("app").hidden=true; $("auth").hidden=false; authMode(); return; }
+  $("auth").hidden=true; $("app").hidden=false;
+  await loadUsers();
+  if(!users[u.uid]){
+    const name=$("aName").value.trim()||(u.email||"membre").split("@")[0];
+    try{ await setDoc(doc(db,"users",u.uid),{username:name,bio:"",photoURL:"",createdAt:serverTimestamp()}); users[u.uid]={username:name,bio:"",photoURL:""}; }catch(e){}
+  }
+  await loadFollowing();
+  go("home");
+});
+
+async function loadUsers(){
+  try{ const s=await getDocs(collection(db,"users")); users={}; s.forEach(d=>users[d.id]=d.data()); }catch(e){ toast(errText(e)); }
+}
+async function loadFollowing(){
+  try{ const s=await getDocs(collection(db,"users",me.uid,"following")); following=new Set(s.docs.map(d=>d.id)); }catch(e){ following=new Set(); }
+}
+async function loadPosts(){
+  try{
+    const s=await getDocs(collection(db,"posts"));
+    posts=s.docs.map(d=>({id:d.id,...d.data()})).filter(p=>vurl(p));
+    posts.sort((a,b)=>tsOf(b)-tsOf(a));
+  }catch(e){ toast(errText(e)); }
+}
+
+/* ---------- Navigation ---------- */
+const views=["home","search","publish","profile"];
+async function go(name, uid){
+  views.forEach(v=>$("v-"+v).hidden = v!==name);
+  document.querySelectorAll("nav [data-go]").forEach(b=>b.classList.toggle("on", b.dataset.go===name));
+  if(name!=="home") document.querySelectorAll("#feed video").forEach(v=>v.pause());
+  if(name==="home"){ await loadPosts(); renderFeed(); }
+  if(name==="profile"){ await loadPosts(); showProfile(uid||me.uid); }
+  if(name==="search") $("q").focus();
+}
+document.querySelectorAll("nav [data-go]").forEach(b=>b.onclick=()=>go(b.dataset.go));
+$("tFor").onclick=()=>{ tab="for"; $("tFor").classList.add("on"); $("tFol").classList.remove("on"); renderFeed(); };
+$("tFol").onclick=()=>{ tab="fol"; $("tFol").classList.add("on"); $("tFor").classList.remove("on"); renderFeed(); };
+
+/* ---------- Fil de vidéos ---------- */
+let io=null;
+function followBtn(uid){
+  if(uid===me.uid||!uid) return "";
+  return `<button class="fbtn" data-act="follow" data-uid="${esc(uid)}">${following.has(uid)?"Abonné":"Suivre"}</button>`;
+}
+function renderFeed(){
+  const feed=$("feed");
+  if(io) io.disconnect();
+  const list = tab==="fol" ? posts.filter(p=>following.has(puid(p))) : posts;
+  if(!list.length){
+    feed.innerHTML = `<div class="empty">${tab==="fol" ? (following.size ? "Pas encore de vidéos de tes abonnements" : "Vous ne suivez encore personne") : "Aucune vidéo pour l'instant. Appuie sur ➕ pour publier !"}</div>`;
+    return;
+  }
+  feed.innerHTML = list.map(p=>`
+    <div class="card" data-id="${esc(p.id)}">
+      <video src="${esc(vurl(p))}" playsinline loop muted preload="metadata"></video>
+      <div class="side">
+        <div><button data-act="like">🤍</button><small data-k="likes">0</small></div>
+        <div><button data-act="comment">💬</button><small data-k="coms"></small></div>
+        <div><button data-act="share">↗️</button></div>
+        ${puid(p)!==me.uid ? `<div><button data-act="report">🚩</button></div>` : ""}
+        <div><small data-k="views">👁 ${p.views||0}</small></div>
+      </div>
+      <div class="info">
+        <b data-act="user" data-uid="${esc(puid(p))}">@${esc(pname(p))}</b>${followBtn(puid(p))}
+        <p>${esc(vdesc(p))}</p>
+      </div>
+    </div>`).join("");
+  io=new IntersectionObserver(es=>{
+    es.forEach(e=>{
+      const v=e.target.querySelector("video");
+      if(e.isIntersecting){ v.play().catch(()=>{}); countView(e.target.dataset.id, e.target); }
+      else v.pause();
+    });
+  },{threshold:0.65});
+  feed.querySelectorAll(".card").forEach(c=>{ io.observe(c); hydrateLikes(c.dataset.id,c); });
+}
+async function hydrateLikes(id,card){
+  try{
+    const s=await getDocs(collection(db,"posts",id,"likes"));
+    const liked=s.docs.some(d=>d.id===me.uid);
+    const b=card.querySelector('[data-act="like"]');
+    b.textContent = liked ? "❤️" : "🤍"; b.dataset.liked = liked ? "1" : "";
+    card.querySelector('[data-k="likes"]').textContent = s.size;
+  }catch(e){}
+}
+async function countView(id,card){
+  if(viewed.has(id)) return; viewed.add(id);
+  try{
+    const r=doc(db,"posts",id,"viewers",me.uid);
+    const s=await getDoc(r);
+    if(!s.exists()){
+      await setDoc(r,{createdAt:serverTimestamp()});
+      await updateDoc(doc(db,"posts",id),{views:increment(1)});
+      const p=posts.find(x=>x.id===id); if(p){ p.views=(p.views||0)+1; card.querySelector('[data-k="views"]').textContent="👁 "+p.views; }
+    }
+  }catch(e){}
+}
+$("feed").addEventListener("click", async ev=>{
+  const card=ev.target.closest(".card"); if(!card) return;
+  const act=ev.target.closest("[data-act]");
+  const id=card.dataset.id;
+  if(!act){ if(ev.target.tagName==="VIDEO"){ const v=ev.target; v.muted=!v.muted; toast(v.muted?"Son coupé":"Son activé"); } return; }
+  const a=act.dataset.act;
+  if(a==="like"){
+    const liked=!!act.dataset.liked, r=doc(db,"posts",id,"likes",me.uid);
+    try{ if(liked) await deleteDoc(r); else await setDoc(r,{createdAt:serverTimestamp()}); hydrateLikes(id,card); }catch(e){ toast(errText(e)); }
+  }
+  if(a==="comment") openComments(id);
+  if(a==="share") share(id);
+  if(a==="report") openReport(id);
+  if(a==="user") go("profile", act.dataset.uid);
+  if(a==="follow") toggleFollow(act.dataset.uid);
+});
+async function toggleFollow(uid){
+  if(!uid||uid===me.uid) return;
+  try{
+    if(following.has(uid)){
+      await deleteDoc(doc(db,"users",me.uid,"following",uid));
+      await deleteDoc(doc(db,"users",uid,"followers",me.uid));
+      following.delete(uid);
+    } else {
+      await setDoc(doc(db,"users",me.uid,"following",uid),{createdAt:serverTimestamp()});
+      await setDoc(doc(db,"users",uid,"followers",me.uid),{createdAt:serverTimestamp()});
+      following.add(uid);
+    }
+    document.querySelectorAll('[data-act="follow"]').forEach(b=>{ if(b.dataset.uid===uid) b.textContent=following.has(uid)?"Abonné":"Suivre"; });
+    if(profileUid===uid && !$("v-profile").hidden) showProfile(uid);
+  }catch(e){ toast(errText(e)); }
+}
+async function share(id){
+  const url=location.origin+location.pathname;
+  const p=posts.find(x=>x.id===id);
+  try{
+    if(navigator.share) await navigator.share({title:"Ma Vie",text:p?vdesc(p):"Regarde sur Ma Vie",url});
+    else { await navigator.clipboard.writeText(url); toast("Lien copié"); }
+  }catch(e){}
+}
+
+/* ---------- Fenêtres ---------- */
+function sheet(html){ $("sheetBox").innerHTML=html; $("sheet").hidden=false; }
+function closeSheet(){ $("sheet").hidden=true; $("sheetBox").innerHTML=""; }
+$("sheet").addEventListener("click",e=>{ if(e.target.id==="sheet") closeSheet(); });
+
+async function openComments(id){
+  sheet(`<h2>Commentaires</h2><div id="cList" class="muted">Chargement…</div><input id="cIn" placeholder="Écris un commentaire"><button class="btn" id="cSend">Envoyer</button>`);
+  async function load(){
+    try{
+      const s=await getDocs(collection(db,"posts",id,"comments"));
+      const l=s.docs.map(d=>d.data()).sort((a,b)=>tsOf(a)-tsOf(b));
+      $("cList").innerHTML = l.length ? l.map(c=>`<div class="row"><div><b>@${esc((users[c.uid]&&users[c.uid].username)||c.username||"membre")}</b><br>${esc(c.text)}</div></div>`).join("") : "Aucun commentaire";
+    }catch(e){ $("cList").textContent=errText(e); }
+  }
+  await load();
+  $("cSend").onclick=async()=>{
+    const t=$("cIn").value.trim(); if(!t) return;
+    try{ await addDoc(collection(db,"posts",id,"comments"),{uid:me.uid,username:(users[me.uid]||{}).username||"",text:t,createdAt:serverTimestamp()}); $("cIn").value=""; load(); }catch(e){ toast(errText(e)); }
+  };
+}
+function openReport(id){
+  const motifs=["Contenu inapproprié","Spam ou arnaque","Violence","Harcèlement","Autre"];
+  sheet(`<h2>Signaler cette vidéo</h2>${motifs.map(m=>`<button class="btn alt" data-m="${esc(m)}">${esc(m)}</button>`).join("")}`);
+  $("sheetBox").querySelectorAll("[data-m]").forEach(b=>b.onclick=async()=>{
+    try{
+      await setDoc(doc(db,"reports",id+"_"+me.uid),{postId:id,reporterUid:me.uid,reason:b.dataset.m,createdAt:serverTimestamp()});
+      closeSheet(); toast("Merci, signalement envoyé");
+    }catch(e){ toast("Signalement impossible : "+errText(e)); }
+  });
+}
+function openPlayer(p){
+  sheet(`<video src="${esc(vurl(p))}" controls autoplay playsinline style="width:100%;max-height:60dvh;background:#000;border-radius:10px"></video><p style="margin:10px 0"><b>@${esc(pname(p))}</b> · 👁 ${p.views||0}</p><p>${esc(vdesc(p))}</p><button class="btn alt" id="pClose">Fermer</button>`);
+  $("pClose").onclick=closeSheet;
+}
+
+/* ---------- Publier ---------- */
+$("pPick").onclick=()=>$("pFile").click();
+$("pFile").onchange=()=>{
+  const f=$("pFile").files[0]; if(!f) return;
+  const v=document.createElement("video"); v.preload="metadata";
+  v.onloadedmetadata=()=>{
+    URL.revokeObjectURL(v.src);
+    if(v.duration<2){ pickedFile=null; $("pName").textContent=""; return toast("Vidéo trop courte (2 secondes minimum)"); }
+    if(v.duration>=1800){ pickedFile=null; $("pName").textContent=""; return toast("Vidéo trop longue (moins de 30 minutes)"); }
+    pickedFile=f; $("pName").textContent="✅ "+f.name;
+  };
+  v.onerror=()=>{ pickedFile=f; $("pName").textContent="✅ "+f.name; };
+  v.src=URL.createObjectURL(f);
+};
+function upload(file){
+  return new Promise((ok,ko)=>{
+    const fd=new FormData(); fd.append("file",file); fd.append("upload_preset",PRESET);
+    const x=new XMLHttpRequest();
+    x.open("POST",`https://api.cloudinary.com/v1_1/${CLOUD}/video/upload`);
+    x.upload.onprogress=e=>{ if(e.lengthComputable) $("pBarI").style.width=Math.round(e.loaded/e.total*100)+"%"; };
+    x.onload=()=>{ try{ const r=JSON.parse(x.responseText); if(x.status<300&&r.secure_url) ok(r.secure_url); else ko(new Error((r.error&&r.error.message)||"Envoi refusé")); }catch(e){ ko(e); } };
+    x.onerror=()=>ko(new Error("Pas de connexion"));
+    x.send(fd);
+  });
+}
+$("pGo").onclick=async()=>{
+  const link=$("pLink").value.trim();
+  if(!pickedFile && !link) return toast("Choisis une vidéo ou colle un lien");
+  $("pGo").disabled=true; $("pBar").hidden=false; $("pBarI").style.width="0";
+  try{
+    const url = pickedFile ? await upload(pickedFile) : link;
+    await addDoc(collection(db,"posts"),{url,desc:$("pDesc").value.trim(),uid:me.uid,username:(users[me.uid]||{}).username||"",views:0,createdAt:serverTimestamp()});
+    pickedFile=null; $("pFile").value=""; $("pLink").value=""; $("pDesc").value=""; $("pName").textContent="";
+    toast("Vidéo publiée !"); go("home");
+  }catch(e){ toast("Échec : "+errText(e)); }
+  $("pGo").disabled=false; $("pBar").hidden=true;
+};
+
+/* ---------- Recherche ---------- */
+$("q").oninput=async()=>{
+  const q=$("q").value.trim().toLowerCase(), box=$("sres");
+  if(!q){ box.innerHTML=""; return; }
+  if(!posts.length) await loadPosts();
+  const us=Object.entries(users).filter(([id,u])=>(u.username||"").toLowerCase().includes(q));
+  const ps=posts.filter(p=>vdesc(p).toLowerCase().includes(q));
+  box.innerHTML = `<h3 style="margin:14px 0 4px">Créateurs</h3>` +
+    (us.length ? us.map(([id,u])=>`<div class="row" data-u="${esc(id)}">${avatar(id)}<b>@${esc(u.username)}</b></div>`).join("") : `<p class="muted">Aucun créateur</p>`) +
+    `<h3 style="margin:14px 0 4px">Vidéos</h3>` +
+    (ps.length ? ps.map(p=>`<div class="row" data-p="${esc(p.id)}"><div>▶️ <b>@${esc(pname(p))}</b><br><span class="muted">${esc(vdesc(p))}</span></div></div>`).join("") : `<p class="muted">Aucune vidéo</p>`);
+};
+$("sres").addEventListener("click",e=>{
+  const u=e.target.closest("[data-u]"); if(u) return go("profile",u.dataset.u);
+  const p=e.target.closest("[data-p]"); if(p){ const x=posts.find(z=>z.id===p.dataset.p); if(x) openPlayer(x); }
+});
+
+/* ---------- Profil ---------- */
+async function showProfile(uid){
+  profileUid=uid;
+  const box=$("v-profile"), mine=uid===me.uid, u=users[uid]||{username:"membre"};
+  box.innerHTML='<p class="muted">Chargement…</p>';
+  let fers=0, fing=0;
+  try{
+    const [a,b]=await Promise.all([getDocs(collection(db,"users",uid,"followers")),getDocs(collection(db,"users",uid,"following"))]);
+    fers=a.size; fing=b.size;
+  }catch(e){}
+  const mp=posts.filter(p=>puid(p)===uid);
+  const totalViews=mp.reduce((s,p)=>s+(Number(p.views)||0),0);
+  let html=`<div style="text-align:center">${avatar(uid,"big")}<div style="margin:6px auto 0;display:flex;justify-content:center">${""}</div><h2>@${esc(u.username)}</h2><p class="muted">${esc(u.bio||"")}</p></div>
+  <div class="stats"><div><b>${mp.length}</b><span>Vidéos</span></div><div><b>${fers}</b><span>Abonnés</span></div><div><b>${fing}</b><span>Abonnements</span></div><div><b>${totalViews}</b><span>Vues</span></div></div>`;
+  if(mine){
+    html+=`<button class="btn alt" id="editBtn">✏️ Modifier mon profil</button>`;
+    html+=`<div class="card2" id="gainBox"><b>Mes gains (estimation)</b><p class="muted">Chargement…</p></div>`;
+  } else {
+    html+=`<button class="btn" data-act="follow" data-uid="${esc(uid)}">${following.has(uid)?"Abonné":"Suivre"}</button>`;
+  }
+  html+=`<h2>${mine?"Mes vidéos":"Vidéos"}</h2>`;
+  html+= mp.length ? mp.map(p=>`<div class="vid"><video src="${esc(vurl(p))}" controls playsinline preload="metadata"></video><p class="muted">👁 ${p.views||0} vues</p><p>${esc(vdesc(p))}</p>${mine?`<button class="btn alt sm" data-del="${esc(p.id)}">Supprimer</button>`:""}</div>`).join("") : `<p class="muted">Aucune vidéo</p>`;
+  if(mine) html+=`<button class="link" id="outBtn">Se déconnecter</button><p style="text-align:center;margin-top:8px"><a class="muted" href="confidentialite.html">Politique de confidentialité</a></p>`;
+  box.innerHTML=html;
+  if(mine){
+    $("editBtn").onclick=openEdit;
+    $("outBtn").onclick=()=>signOut(auth);
+    renderGains(totalViews);
+  }
+}
+$("v-profile").addEventListener("click",async e=>{
+  const f=e.target.closest('[data-act="follow"]'); if(f) return toggleFollow(f.dataset.uid);
+  const d=e.target.closest("[data-del]");
+  if(d && confirm("Supprimer cette vidéo ?")){
+    try{ await deleteDoc(doc(db,"posts",d.dataset.del)); await loadPosts(); showProfile(me.uid); }catch(err){ toast(errText(err)); }
+  }
+});
+async function myWithdrawals(){
+  try{ const s=await getDocs(query(collection(db,"withdrawals"),where("uid","==",me.uid))); return s.docs.map(d=>d.data()).sort((a,b)=>tsOf(b)-tsOf(a)); }catch(e){ return []; }
+}
+async function renderGains(totalViews){
+  const w=await myWithdrawals();
+  const earned=Math.floor(totalViews*RATE/1000);
+  const taken=w.filter(x=>x.status!=="Refusé").reduce((s,x)=>s+(Number(x.amount)||0),0);
+  const bal=Math.max(0,earned-taken);
+  const box=$("gainBox"); if(!box) return;
+  box.innerHTML=`<b>Mes gains (estimation)</b>
+    <p style="font-size:26px;font-weight:800;margin:6px 0">${bal} FCFA</p>
+    <p class="muted">${totalViews} vues · calcul de test : ${RATE} FCFA pour 1 000 vues</p>
+    <p class="muted">Retrait possible à partir de ${MIN_WITHDRAW} FCFA</p>
+    <button class="btn" id="wBtn" ${bal<MIN_WITHDRAW?"disabled":""}>Retirer</button>
+    ${w.length?`<p class="muted" style="margin-top:8px">Mes demandes de retrait</p>`+w.map(x=>`<div class="row"><div>${esc(x.amount)} FCFA · ${esc(x.method)}</div><span class="tag">${esc(x.status)}</span></div>`).join(""):""}
+    <a href="gains.html" class="muted">Voir tous mes gains →</a>`;
+  $("wBtn").onclick=()=>openWithdraw(bal);
+}
+function openWithdraw(bal){
+  sheet(`<h2>Retirer mes gains</h2><p class="muted">Solde : ${bal} FCFA. Le propriétaire paie à la main.</p>
+    <select id="wM"><option>Orange Money</option><option>Wave</option></select>
+    <input id="wP" type="tel" placeholder="Ton numéro (ex. 0700000000)">
+    <input id="wA" type="number" placeholder="Montant en FCFA" value="${bal}">
+    <button class="btn" id="wSend">Envoyer la demande</button>`);
+  $("wSend").onclick=async()=>{
+    const amount=Number($("wA").value), phone=$("wP").value.trim();
+    if(!phone) return toast("Écris ton numéro");
+    if(!(amount>=MIN_WITHDRAW)) return toast("Minimum "+MIN_WITHDRAW+" FCFA");
+    if(amount>bal) return toast("Montant plus grand que ton solde");
+    try{
+      await addDoc(collection(db,"withdrawals"),{uid:me.uid,username:(users[me.uid]||{}).username||"",amount,method:$("wM").value,phone,status:"En attente",createdAt:serverTimestamp()});
+      closeSheet(); toast("Demande envoyée (En attente)"); showProfile(me.uid);
+    }catch(e){ toast(errText(e)); }
+  };
+}
+function openEdit(){
+  const u=users[me.uid]||{};
+  let newPhoto=null;
+  sheet(`<h2>Modifier mon profil</h2>
+    <div style="text-align:center">${avatar(me.uid,"big")}</div>
+    <button class="btn alt" id="ePick">📷 Choisir une photo du téléphone</button>
+    <input type="file" id="eFile" accept="image/*" hidden>
+    <input id="eName" placeholder="Nom d'utilisateur" value="${esc(u.username||"")}">
+    <textarea id="eBio" rows="3" placeholder="Description">${esc(u.bio||"")}</textarea>
+    <button class="btn" id="eSave">Enregistrer</button>`);
+  $("ePick").onclick=()=>$("eFile").click();
+  $("eFile").onchange=()=>{
+    const f=$("eFile").files[0]; if(!f) return;
+    const img=new Image();
+    img.onload=()=>{
+      const s=256, c=document.createElement("canvas"); c.width=s; c.height=s;
+      const m=Math.min(img.width,img.height), sx=(img.width-m)/2, sy=(img.height-m)/2;
+      c.getContext("2d").drawImage(img,sx,sy,m,m,0,0,s,s);
+      newPhoto=c.toDataURL("image/jpeg",0.8);
+      toast("Photo prête, appuie sur Enregistrer");
+    };
+    img.src=URL.createObjectURL(f);
+  };
+  $("eSave").onclick=async()=>{
+    const name=$("eName").value.trim(); if(!name) return toast("Écris un nom d'utilisateur");
+    const data={username:name,bio:$("eBio").value.trim()};
+    if(newPhoto) data.photoURL=newPhoto;
+    try{ await setDoc(doc(db,"users",me.uid),data,{merge:true}); users[me.uid]={...(users[me.uid]||{}),...data}; closeSheet(); toast("Profil enregistré"); showProfile(me.uid); }
+    catch(e){ toast(errText(e)); }
+  };
+}
+
+if("serviceWorker" in navigator){ try{ navigator.serviceWorker.register("sw.js"); }catch(e){} }
+</script>
+</body>
+</html>
